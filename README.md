@@ -112,31 +112,46 @@ GET    /api/dashboard/resumen
 
 Estructura: `/backend` (API Express) y `/frontend` (SPA Vite+React) como dos
 proyectos independientes dentro de este repo, más un `docker-compose.yml` en
-la raíz para levantar MySQL en desarrollo.
+la raíz que puede levantar solo MySQL o el stack completo.
 
-### 1. Base de datos (MySQL vía Docker)
+### Opción A — Todo con Docker (más simple)
 
 ```bash
 docker compose up -d
 ```
 
-Esto levanta MySQL 8 en `localhost:3306` con la base `stockmanager` y el
-usuario `stockmanager` / `stockmanager` (ver `docker-compose.yml`). Si ya
-tenés un MySQL propio corriendo, no hace falta Docker — solo apuntá las
-variables de entorno del backend a tu instancia.
+Levanta los tres servicios: MySQL 8 (`localhost:3306`), backend
+(`localhost:4000`) y frontend (`localhost:5173`). Los contenedores de
+backend/frontend montan el código fuente como volumen y corren con
+hot-reload (`nodemon --legacy-watch` / `vite --host` con polling), así que
+podés seguir editando en tu editor de siempre y los cambios se reflejan
+solos. El schema y los datos de ejemplo se cargan automáticamente la
+primera vez que se crea el volumen de MySQL (vía
+`docker-entrypoint-initdb.d`) — no hace falta correr nada a mano.
 
-Cargar el schema y los datos de ejemplo:
+Entrá a `http://localhost:5173/login` con **admin@stockmanager.com** /
+**admin123**.
+
+Para reconstruir las imágenes después de cambiar dependencias
+(`package.json`): `docker compose up -d --build`.
+
+### Opción B — Solo MySQL en Docker, backend/frontend con Node local
+
+```bash
+docker compose up -d mysql
+```
+
+Esto levanta únicamente MySQL. Si el volumen ya tenía datos de una corrida
+anterior sin backend/frontend en Docker, cargá el schema y el seed a mano:
 
 ```bash
 docker exec -i stockmanager-mysql mysql -uroot -proot --default-character-set=utf8mb4 < backend/src/db/schema.sql
 docker exec -i stockmanager-mysql mysql -uroot -proot --default-character-set=utf8mb4 stockmanager < backend/src/db/seed.sql
 ```
 
-(Si usás tu propio MySQL: `mysql -u root -p --default-character-set=utf8mb4 < backend/src/db/schema.sql` y lo mismo con `seed.sql`.)
+(Si usás tu propio MySQL en vez de Docker: `mysql -u root -p --default-character-set=utf8mb4 < backend/src/db/schema.sql` y lo mismo con `seed.sql`.)
 
-Usuario de prueba: **admin@stockmanager.com** / **admin123**
-
-### 2. Backend
+Backend:
 
 ```bash
 cd backend
@@ -145,7 +160,7 @@ npm install
 npm run dev             # http://localhost:4000
 ```
 
-### 3. Frontend
+Frontend:
 
 ```bash
 cd frontend
@@ -154,5 +169,5 @@ npm install
 npm run dev              # http://localhost:5173
 ```
 
-Con los tres servicios arriba (MySQL, backend, frontend), entrá a
-`http://localhost:5173/login` con el usuario de prueba.
+Con los tres servicios arriba (MySQL, backend, frontend, sea por Docker o
+local), entrá a `http://localhost:5173/login` con el usuario de prueba.

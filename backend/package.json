@@ -6,9 +6,8 @@
   "description": "API REST de StockManager (inventario y pedidos) — Express + MySQL",
   "main": "src/server.js",
   "scripts": {
-    "dev": "node --watch src/server.js",
-    "start": "node src/server.js",
-    "db:init": "node src/db/init.js"
+    "dev": "nodemon --legacy-watch src/server.js",
+    "start": "node src/server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -17,5 +16,8 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
   }
 }
