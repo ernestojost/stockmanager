@@ -18,13 +18,13 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   const token = jwt.sign(
-    { id: usuario.id, email: usuario.email, nombre: usuario.nombre },
+    { id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '8h' }
   );
 
   res.json({
     token,
-    usuario: { id: usuario.id, email: usuario.email, nombre: usuario.nombre },
+    usuario: { id: usuario.id, email: usuario.email, nombre: usuario.nombre, rol: usuario.rol },
   });
 });

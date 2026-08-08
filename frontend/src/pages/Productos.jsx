@@ -2,8 +2,17 @@ import { useEffect, useState, useCallback } from 'react';
 import client from '../api/client';
 import StockBadge from '../components/StockBadge';
 import Modal from '../components/Modal';
+import { useAuth } from '../context/AuthContext';
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+const formatoFecha = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' });
+
+const TIPO_LABEL = {
+  alta_inicial: 'Alta inicial',
+  ajuste_manual: 'Ajuste manual',
+  venta: 'Venta',
+  cancelacion: 'Cancelación de pedido',
+};
 
 const FORM_VACIO = {
   nombre: '',
@@ -15,6 +24,7 @@ const FORM_VACIO = {
 };
 
 export default function Productos() {
+  const { isAdmin } = useAuth();
   const [productos, setProductos] = useState([]);
   const [categorias, setCategorias] = useState([]);
   const [search, setSearch] = useState('');
@@ -23,6 +33,8 @@ export default function Productos() {
   const [form, setForm] = useState(FORM_VACIO);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
+  const [historialDe, setHistorialDe] = useState(null); // producto seleccionado o null
+  const [movimientos, setMovimientos] = useState([]);
 
   const cargarProductos = useCallback(() => {
     const params = {};
@@ -103,13 +115,21 @@ export default function Productos() {
     cargarProductos();
   }
 
+  async function abrirHistorial(producto) {
+    setHistorialDe(producto);
+    const { data } = await client.get(`/productos/${producto.id}/movimientos`);
+    setMovimientos(data);
+  }
+
   return (
     <div>
       <div className="page-header">
         <h2>Productos</h2>
-        <button type="button" className="btn btn-primary" onClick={abrirNuevo}>
-          + Nuevo producto
-        </button>
+        {isAdmin && (
+          <button type="button" className="btn btn-primary" onClick={abrirNuevo}>
+            + Nuevo producto
+          </button>
+        )}
       </div>
 
       <div className="filters-row">
@@ -151,13 +171,20 @@ export default function Productos() {
               </td>
               <td>{p.activo ? 'Activo' : 'De baja'}</td>
               <td className="table-actions">
-                <button type="button" className="btn btn-ghost" onClick={() => abrirEdicion(p)}>
-                  Editar
-                </button>
-                {p.activo && (
-                  <button type="button" className="btn btn-ghost btn-danger" onClick={() => darDeBaja(p)}>
-                    Dar de baja
-                  </button>
+                {isAdmin && (
+                  <>
+                    <button type="button" className="btn btn-ghost" onClick={() => abrirHistorial(p)}>
+                      Historial
+                    </button>
+                    <button type="button" className="btn btn-ghost" onClick={() => abrirEdicion(p)}>
+                      Editar
+                    </button>
+                    {p.activo && (
+                      <button type="button" className="btn btn-ghost btn-danger" onClick={() => darDeBaja(p)}>
+                        Dar de baja
+                      </button>
+                    )}
+                  </>
                 )}
               </td>
             </tr>
@@ -255,6 +282,45 @@ export default function Productos() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {historialDe && (
+        <Modal title={`Historial de stock — ${historialDe.nombre}`} onClose={() => setHistorialDe(null)}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Cantidad</th>
+                <th>Stock resultante</th>
+                <th>Usuario</th>
+              </tr>
+            </thead>
+            <tbody>
+              {movimientos.map((m) => (
+                <tr key={m.id}>
+                  <td>{formatoFecha.format(new Date(m.created_at))}</td>
+                  <td>
+                    {TIPO_LABEL[m.tipo] || m.tipo}
+                    {m.pedido_id && <span className="muted"> (pedido #{m.pedido_id})</span>}
+                  </td>
+                  <td className={m.cantidad < 0 ? 'text-danger' : 'text-success'}>
+                    {m.cantidad > 0 ? `+${m.cantidad}` : m.cantidad}
+                  </td>
+                  <td>{m.stock_resultante}</td>
+                  <td>{m.usuario_nombre}</td>
+                </tr>
+              ))}
+              {movimientos.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="muted">
+                    Todavía no hay movimientos registrados.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </Modal>
       )}
     </div>

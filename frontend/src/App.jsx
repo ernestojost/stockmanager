@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute, { RequireAdmin } from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -8,6 +8,7 @@ import Productos from './pages/Productos';
 import Clientes from './pages/Clientes';
 import Pedidos from './pages/Pedidos';
 import PedidoNuevo from './pages/PedidoNuevo';
+import Usuarios from './pages/Usuarios';
 
 export default function App() {
   return (
@@ -21,6 +22,9 @@ export default function App() {
             <Route path="/clientes" element={<Clientes />} />
             <Route path="/pedidos" element={<Pedidos />} />
             <Route path="/pedidos/nuevo" element={<PedidoNuevo />} />
+            <Route element={<RequireAdmin />}>
+              <Route path="/usuarios" element={<Usuarios />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

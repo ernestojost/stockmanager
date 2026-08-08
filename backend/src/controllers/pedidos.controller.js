@@ -1,10 +1,14 @@
+import PDFDocument from 'pdfkit';
 import { pool } from '../config/db.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
+import { registrarMovimiento } from './movimientos.controller.js';
+
+const formatoMoneda = (n) => `$ ${Number(n).toFixed(2)}`;
+const formatoFecha = (d) => new Date(d).toLocaleString('es-AR');
 
 const ESTADOS = ['pendiente', 'entregado', 'cancelado'];
 
-export const listPedidos = asyncHandler(async (req, res) => {
-  const { estado, desde, hasta } = req.query;
+function buildFiltrosPedidos({ estado, desde, hasta }) {
   const clauses = [];
   const params = [];
 
@@ -21,7 +25,11 @@ export const listPedidos = asyncHandler(async (req, res) => {
     params.push(`${hasta} 23:59:59`);
   }
 
-  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params };
+}
+
+async function fetchPedidosFiltrados(query) {
+  const { where, params } = buildFiltrosPedidos(query);
   const [rows] = await pool.query(
     `SELECT p.id, p.estado, p.total, p.created_at,
             p.cliente_id, c.nombre AS cliente_nombre,
@@ -33,7 +41,11 @@ export const listPedidos = asyncHandler(async (req, res) => {
      ORDER BY p.created_at DESC`,
     params
   );
-  res.json(rows);
+  return rows;
+}
+
+export const listPedidos = asyncHandler(async (req, res) => {
+  res.json(await fetchPedidosFiltrados(req.query));
 });
 
 export const getPedido = asyncHandler(async (req, res) => {
@@ -103,7 +115,13 @@ export const createPedido = asyncHandler(async (req, res) => {
 
       const precio_unitario = producto.precio;
       total += precio_unitario * item.cantidad;
-      itemsToInsert.push({ producto_id: producto.id, cantidad: item.cantidad, precio_unitario });
+      const stockResultante = producto.stock_actual - item.cantidad;
+      itemsToInsert.push({
+        producto_id: producto.id,
+        cantidad: item.cantidad,
+        precio_unitario,
+        stockResultante,
+      });
 
       await connection.query('UPDATE productos SET stock_actual = stock_actual - ? WHERE id = ?', [
         item.cantidad,
@@ -122,6 +140,14 @@ export const createPedido = asyncHandler(async (req, res) => {
         'INSERT INTO pedido_items (pedido_id, producto_id, cantidad, precio_unitario) VALUES (?, ?, ?, ?)',
         [pedidoId, item.producto_id, item.cantidad, item.precio_unitario]
       );
+      await registrarMovimiento(connection, {
+        productoId: item.producto_id,
+        tipo: 'venta',
+        cantidad: -item.cantidad,
+        stockResultante: item.stockResultante,
+        pedidoId,
+        usuarioId: req.user.id,
+      });
     }
 
     await connection.commit();
@@ -158,10 +184,23 @@ export const updateEstadoPedido = asyncHandler(async (req, res) => {
         req.params.id,
       ]);
       for (const item of items) {
-        await connection.query('UPDATE productos SET stock_actual = stock_actual + ? WHERE id = ?', [
-          item.cantidad,
+        const [productoRows] = await connection.query('SELECT stock_actual FROM productos WHERE id = ? FOR UPDATE', [
           item.producto_id,
         ]);
+        const stockResultante = productoRows[0].stock_actual + item.cantidad;
+
+        await connection.query('UPDATE productos SET stock_actual = ? WHERE id = ?', [
+          stockResultante,
+          item.producto_id,
+        ]);
+        await registrarMovimiento(connection, {
+          productoId: item.producto_id,
+          tipo: 'cancelacion',
+          cantidad: item.cantidad,
+          stockResultante,
+          pedidoId: req.params.id,
+          usuarioId: req.user.id,
+        });
       }
     }
 
@@ -175,4 +214,80 @@ export const updateEstadoPedido = asyncHandler(async (req, res) => {
   } finally {
     connection.release();
   }
+});
+
+export const exportPedidos = asyncHandler(async (req, res) => {
+  const { formato = 'csv' } = req.query;
+  if (!['csv', 'pdf'].includes(formato)) throw new ApiError(400, 'Formato inválido (csv o pdf)');
+
+  const pedidos = await fetchPedidosFiltrados(req.query);
+
+  if (formato === 'csv') {
+    const header = ['#', 'Cliente', 'Fecha', 'Total', 'Estado'];
+    const filas = pedidos.map((p) => [
+      p.id,
+      p.cliente_nombre,
+      formatoFecha(p.created_at),
+      Number(p.total).toFixed(2),
+      p.estado,
+    ]);
+    const escape = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const csv = [header, ...filas].map((fila) => fila.map(escape).join(',')).join('\r\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="pedidos.csv"');
+    res.send('﻿' + csv);
+    return;
+  }
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="pedidos.pdf"');
+
+  const doc = new PDFDocument({ margin: 40, size: 'A4' });
+  doc.pipe(res);
+
+  doc.fontSize(16).text('StockManager — Pedidos', { align: 'left' });
+  doc.fontSize(9).fillColor('#666').text(new Date().toLocaleString('es-AR'));
+  doc.moveDown(1);
+
+  const colX = { id: 40, cliente: 80, fecha: 260, total: 400, estado: 480 };
+  const rowHeight = 20;
+
+  function drawHeader(y) {
+    doc.fontSize(9).fillColor('#000').font('Helvetica-Bold');
+    doc.text('#', colX.id, y);
+    doc.text('Cliente', colX.cliente, y);
+    doc.text('Fecha', colX.fecha, y);
+    doc.text('Total', colX.total, y);
+    doc.text('Estado', colX.estado, y);
+    doc.font('Helvetica');
+  }
+
+  let y = doc.y;
+  drawHeader(y);
+  y += rowHeight;
+
+  let totalGeneral = 0;
+  for (const p of pedidos) {
+    if (y > 760) {
+      doc.addPage();
+      y = 40;
+      drawHeader(y);
+      y += rowHeight;
+    }
+    doc.fontSize(9).fillColor('#000');
+    doc.text(String(p.id), colX.id, y);
+    doc.text(p.cliente_nombre, colX.cliente, y, { width: 170 });
+    doc.text(formatoFecha(p.created_at), colX.fecha, y);
+    doc.text(formatoMoneda(p.total), colX.total, y);
+    doc.text(p.estado, colX.estado, y);
+    if (p.estado !== 'cancelado') totalGeneral += Number(p.total);
+    y += rowHeight;
+  }
+
+  doc.moveTo(40, y).lineTo(555, y).strokeColor('#ccc').stroke();
+  y += 10;
+  doc.fontSize(10).font('Helvetica-Bold').text(`Total (sin cancelados): ${formatoMoneda(totalGeneral)}`, colX.total, y);
+
+  doc.end();
 });

@@ -2,16 +2,19 @@ import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import client from '../api/client';
 import EstadoBadge from '../components/EstadoBadge';
+import { useAuth } from '../context/AuthContext';
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 const formatoFecha = new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' });
 
 export default function Pedidos() {
+  const { isAdmin } = useAuth();
   const [pedidos, setPedidos] = useState([]);
   const [estado, setEstado] = useState('');
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [actualizando, setActualizando] = useState(null);
+  const [exportando, setExportando] = useState(false);
 
   const cargar = useCallback(() => {
     const params = {};
@@ -37,13 +40,49 @@ export default function Pedidos() {
     }
   }
 
+  async function exportar(formato) {
+    setExportando(true);
+    try {
+      const params = { formato };
+      if (estado) params.estado = estado;
+      if (desde) params.desde = desde;
+      if (hasta) params.hasta = hasta;
+
+      const { data } = await client.get('/pedidos/export', { params, responseType: 'blob' });
+      const url = URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `pedidos.${formato}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('No se pudo exportar el listado');
+    } finally {
+      setExportando(false);
+    }
+  }
+
   return (
     <div>
       <div className="page-header">
         <h2>Pedidos</h2>
-        <Link to="/pedidos/nuevo" className="btn btn-primary">
-          + Nuevo pedido
-        </Link>
+        <div className="page-header-actions">
+          {isAdmin && (
+            <>
+              <button type="button" className="btn btn-ghost" disabled={exportando} onClick={() => exportar('csv')}>
+                Exportar CSV
+              </button>
+              <button type="button" className="btn btn-ghost" disabled={exportando} onClick={() => exportar('pdf')}>
+                Exportar PDF
+              </button>
+            </>
+          )}
+          <Link to="/pedidos/nuevo" className="btn btn-primary">
+            + Nuevo pedido
+          </Link>
+        </div>
       </div>
 
       <div className="filters-row">

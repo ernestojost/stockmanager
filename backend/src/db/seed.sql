@@ -1,14 +1,16 @@
 -- ============================================================================
 -- StockManager — datos de ejemplo
--- Usuario admin: admin@stockmanager.com / admin123
+-- Usuario admin:    admin@stockmanager.com    / admin123
+-- Usuario vendedor: vendedor@stockmanager.com / vendedor123
 -- ============================================================================
 
 USE stockmanager;
 SET NAMES utf8mb4;
 
-INSERT INTO usuarios (email, password_hash, nombre) VALUES
-  ('admin@stockmanager.com', '$2a$10$BtM20fNxKz3yZGPsXpO6M.i.9vp5GPIH7cLhdmu3fQzAOqfvYSP3q', 'Admin')
-ON DUPLICATE KEY UPDATE nombre = VALUES(nombre);
+INSERT INTO usuarios (email, password_hash, nombre, rol) VALUES
+  ('admin@stockmanager.com', '$2a$10$BtM20fNxKz3yZGPsXpO6M.i.9vp5GPIH7cLhdmu3fQzAOqfvYSP3q', 'Admin', 'admin'),
+  ('vendedor@stockmanager.com', '$2a$10$M3rHDZzMVDojDfhrDvq2lu2f.dW28GT1hktjyHXNOfuUr.D3VtrVO', 'Vendedor Demo', 'vendedor')
+ON DUPLICATE KEY UPDATE nombre = VALUES(nombre), rol = VALUES(rol);
 
 INSERT INTO categorias (nombre) VALUES
   ('Bebidas'), ('Almacén'), ('Limpieza'), ('Herramientas')

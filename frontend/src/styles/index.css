@@ -229,6 +229,12 @@ h3 {
   margin-bottom: 16px;
 }
 
+.page-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ---------- Table ---------- */
 
 .table {
@@ -299,6 +305,16 @@ h3 {
   color: var(--color-success-text);
 }
 
+.text-danger {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.text-success {
+  color: var(--color-success-text);
+  font-weight: 600;
+}
+
 .badge-warning {
   background: var(--color-warning-bg);
   color: var(--color-warning-text);
@@ -333,6 +349,107 @@ h3 {
 
 .card-value-sm {
   font-size: 18px;
+}
+
+.card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s;
+}
+
+.card-link:hover {
+  border-color: var(--color-primary);
+}
+
+/* ---------- Gráfico de ventas ---------- */
+
+.chart-section {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.chart-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.periodo-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.periodo-toggle button {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+.periodo-toggle button.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.chart-ventas {
+  position: relative;
+}
+
+.chart-svg {
+  width: 100%;
+  height: 220px;
+  overflow: visible;
+}
+
+.chart-baseline {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+
+.chart-bar {
+  fill: var(--color-primary);
+}
+
+.chart-bar-hover {
+  fill: var(--color-primary-hover);
+}
+
+.chart-bar-group {
+  outline: none;
+  cursor: pointer;
+}
+
+.chart-value-label {
+  fill: var(--color-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chart-axis-label {
+  fill: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  font-size: 13px;
+  box-shadow: var(--shadow-modal);
 }
 
 /* ---------- Modal ---------- */

@@ -8,6 +8,8 @@
 --   categorias (1) ──< productos (N)      un producto pertenece a una categoría
 --   pedidos (1) ──< pedido_items (N)      un pedido tiene muchas líneas
 --   productos (1) ──< pedido_items (N)    un producto puede aparecer en muchas líneas
+--   productos (1) ──< movimientos_stock (N)  cada cambio de stock queda auditado
+--   pedidos (1) ──< movimientos_stock (N)    movimientos de tipo venta/cancelacion referencian su pedido
 --
 -- pedido_items es la tabla intermedia que resuelve el N:M entre pedidos y
 -- productos, y además congela precio_unitario/cantidad al momento de la venta
@@ -29,6 +31,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   email         VARCHAR(150) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   nombre        VARCHAR(150) NOT NULL,
+  rol           ENUM('admin','vendedor') NOT NULL DEFAULT 'vendedor',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
@@ -114,3 +117,26 @@ CREATE TABLE IF NOT EXISTS pedido_items (
 
 CREATE INDEX idx_pedido_items_pedido ON pedido_items(pedido_id);
 CREATE INDEX idx_pedido_items_producto ON pedido_items(producto_id);
+
+-- ----------------------------------------------------------------------------
+-- movimientos_stock: auditoría de todo cambio en productos.stock_actual.
+-- cantidad es signada (+ entra stock, - sale stock); stock_resultante es el
+-- stock_actual del producto luego de aplicar este movimiento, así el
+-- historial se puede leer sin tener que ir recalculando.
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS movimientos_stock (
+  id               INT AUTO_INCREMENT PRIMARY KEY,
+  producto_id      INT NOT NULL,
+  tipo             ENUM('alta_inicial','ajuste_manual','venta','cancelacion') NOT NULL,
+  cantidad         INT NOT NULL,
+  stock_resultante INT NOT NULL,
+  pedido_id        INT NULL,
+  usuario_id       INT NOT NULL,
+  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_movimientos_producto FOREIGN KEY (producto_id) REFERENCES productos(id),
+  CONSTRAINT fk_movimientos_pedido FOREIGN KEY (pedido_id) REFERENCES pedidos(id),
+  CONSTRAINT fk_movimientos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_movimientos_producto ON movimientos_stock(producto_id);
+CREATE INDEX idx_movimientos_pedido ON movimientos_stock(pedido_id);

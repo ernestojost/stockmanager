@@ -1,5 +1,6 @@
 import { pool } from '../config/db.js';
 import { ApiError, asyncHandler } from '../middleware/errorHandler.js';
+import { registrarMovimiento } from './movimientos.controller.js';
 
 const SELECT_PRODUCTO = `
   SELECT p.id, p.nombre, p.descripcion, p.categoria_id, c.nombre AS categoria_nombre,
@@ -60,50 +61,97 @@ export const createProducto = asyncHandler(async (req, res) => {
   validateProductoBody(req.body);
   const { nombre, descripcion = null, categoria_id = null, precio, stock_actual = 0, stock_minimo = 0 } = req.body;
 
-  const [result] = await pool.query(
-    `INSERT INTO productos (nombre, descripcion, categoria_id, precio, stock_actual, stock_minimo)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [nombre.trim(), descripcion, categoria_id, precio, stock_actual, stock_minimo]
-  );
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
 
-  const [rows] = await pool.query(`${SELECT_PRODUCTO} WHERE p.id = ?`, [result.insertId]);
-  res.status(201).json(rows[0]);
+    const [result] = await connection.query(
+      `INSERT INTO productos (nombre, descripcion, categoria_id, precio, stock_actual, stock_minimo)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [nombre.trim(), descripcion, categoria_id, precio, stock_actual, stock_minimo]
+    );
+
+    if (Number(stock_actual) > 0) {
+      await registrarMovimiento(connection, {
+        productoId: result.insertId,
+        tipo: 'alta_inicial',
+        cantidad: Number(stock_actual),
+        stockResultante: Number(stock_actual),
+        usuarioId: req.user.id,
+      });
+    }
+
+    await connection.commit();
+
+    const [rows] = await pool.query(`${SELECT_PRODUCTO} WHERE p.id = ?`, [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 });
 
 export const updateProducto = asyncHandler(async (req, res) => {
   validateProductoBody(req.body, { partial: true });
 
-  const [existingRows] = await pool.query('SELECT * FROM productos WHERE id = ?', [req.params.id]);
-  const existing = existingRows[0];
-  if (!existing) throw new ApiError(404, 'Producto no encontrado');
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
 
-  const merged = {
-    nombre: req.body.nombre ?? existing.nombre,
-    descripcion: req.body.descripcion ?? existing.descripcion,
-    categoria_id: req.body.categoria_id ?? existing.categoria_id,
-    precio: req.body.precio ?? existing.precio,
-    stock_actual: req.body.stock_actual ?? existing.stock_actual,
-    stock_minimo: req.body.stock_minimo ?? existing.stock_minimo,
-    activo: req.body.activo ?? existing.activo,
-  };
-
-  await pool.query(
-    `UPDATE productos SET nombre = ?, descripcion = ?, categoria_id = ?, precio = ?,
-       stock_actual = ?, stock_minimo = ?, activo = ? WHERE id = ?`,
-    [
-      merged.nombre.trim(),
-      merged.descripcion,
-      merged.categoria_id,
-      merged.precio,
-      merged.stock_actual,
-      merged.stock_minimo,
-      merged.activo,
+    const [existingRows] = await connection.query('SELECT * FROM productos WHERE id = ? FOR UPDATE', [
       req.params.id,
-    ]
-  );
+    ]);
+    const existing = existingRows[0];
+    if (!existing) throw new ApiError(404, 'Producto no encontrado');
 
-  const [rows] = await pool.query(`${SELECT_PRODUCTO} WHERE p.id = ?`, [req.params.id]);
-  res.json(rows[0]);
+    const merged = {
+      nombre: req.body.nombre ?? existing.nombre,
+      descripcion: req.body.descripcion ?? existing.descripcion,
+      categoria_id: req.body.categoria_id ?? existing.categoria_id,
+      precio: req.body.precio ?? existing.precio,
+      stock_actual: req.body.stock_actual ?? existing.stock_actual,
+      stock_minimo: req.body.stock_minimo ?? existing.stock_minimo,
+      activo: req.body.activo ?? existing.activo,
+    };
+
+    await connection.query(
+      `UPDATE productos SET nombre = ?, descripcion = ?, categoria_id = ?, precio = ?,
+         stock_actual = ?, stock_minimo = ?, activo = ? WHERE id = ?`,
+      [
+        merged.nombre.trim(),
+        merged.descripcion,
+        merged.categoria_id,
+        merged.precio,
+        merged.stock_actual,
+        merged.stock_minimo,
+        merged.activo,
+        req.params.id,
+      ]
+    );
+
+    const stockCambio = Number(merged.stock_actual) - Number(existing.stock_actual);
+    if (stockCambio !== 0) {
+      await registrarMovimiento(connection, {
+        productoId: req.params.id,
+        tipo: 'ajuste_manual',
+        cantidad: stockCambio,
+        stockResultante: Number(merged.stock_actual),
+        usuarioId: req.user.id,
+      });
+    }
+
+    await connection.commit();
+
+    const [rows] = await pool.query(`${SELECT_PRODUCTO} WHERE p.id = ?`, [req.params.id]);
+    res.json(rows[0]);
+  } catch (err) {
+    await connection.rollback();
+    throw err;
+  } finally {
+    connection.release();
+  }
 });
 
 export const deleteProducto = asyncHandler(async (req, res) => {

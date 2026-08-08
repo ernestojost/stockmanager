@@ -31,7 +31,7 @@ Una SPA de gestión de inventario y pedidos para un negocio chico (podés orient
 ## Modelo de datos (MySQL)
 
 ```sql
-usuarios (id, email, password_hash, nombre, created_at)
+usuarios (id, email, password_hash, nombre, rol ENUM('admin','vendedor'), created_at)
 
 categorias (id, nombre)
 
@@ -53,6 +53,14 @@ pedido_items (
   id, pedido_id FK -> pedidos.id, producto_id FK -> productos.id,
   cantidad, precio_unitario
 )
+
+movimientos_stock (
+  id, producto_id FK -> productos.id,
+  tipo ENUM('alta_inicial','ajuste_manual','venta','cancelacion'),
+  cantidad, stock_resultante,
+  pedido_id FK -> pedidos.id (nullable),
+  usuario_id FK -> usuarios.id, created_at
+)
 ```
 
 Este es el proyecto donde más vale la pena mostrar el diagrama entidad-relación en el repo (un `schema.png` o `.sql` con comentarios) — es justo lo que un reclutador técnico quiere ver rápido sin leer todo el código.
@@ -61,22 +69,33 @@ Este es el proyecto donde más vale la pena mostrar el diagrama entidad-relació
 
 ```
 POST   /api/auth/login
+
 GET    /api/productos          GET /api/productos/:id
-POST   /api/productos          PUT /api/productos/:id       DELETE /api/productos/:id
+POST   /api/productos*         PUT /api/productos/:id*      DELETE /api/productos/:id*
+GET    /api/productos/:id/movimientos*     (historial de stock)
+
 GET    /api/clientes           POST /api/clientes
+
 GET    /api/pedidos            GET /api/pedidos/:id
 POST   /api/pedidos            PATCH /api/pedidos/:id/estado
-GET    /api/dashboard/resumen
+GET    /api/pedidos/export*    (?formato=csv|pdf, mismos filtros que el listado)
+
+GET    /api/dashboard/resumen*             GET /api/dashboard/ventas*  (?agrupacion=dia|semana|mes)
+
+GET    /api/usuarios*          POST /api/usuarios*
+
+  * = solo rol admin (403 para vendedor)
 ```
 
 ## Páginas / rutas (frontend)
 
 - `/login`
-- `/` — Dashboard
-- `/productos` — Listado + alta/edición
+- `/` — Dashboard (admin) o accesos rápidos (vendedor)
+- `/productos` — Listado + alta/edición + historial de stock (admin); solo lectura para vendedor
 - `/clientes` — Listado + alta
-- `/pedidos` — Listado + filtros
+- `/pedidos` — Listado + filtros + export CSV/PDF (admin)
 - `/pedidos/nuevo` — Formulario de nuevo pedido (selección de productos con búsqueda, cálculo de total en vivo)
+- `/usuarios` — Alta de usuarios y asignación de rol (admin)
 
 ## Diseño y UX
 
@@ -84,12 +103,12 @@ GET    /api/dashboard/resumen
 - El formulario de "nuevo pedido" es la pieza más compleja de UX: buscar producto → agregar a la lista → ajustar cantidad → ver total actualizarse. Vale la pena invertir tiempo ahí.
 - Validaciones reales: no dejar vender más stock del disponible, no permitir precios negativos, etc. — mostrar que pensaste los casos borde es lo que separa un CRUD de tutorial de un sistema real.
 
-## Funcionalidades extra (para después, no MVP)
+## Funcionalidades extra (implementadas)
 
-- Exportar pedidos a CSV/PDF.
-- Historial de movimientos de stock (auditoría).
-- Múltiples usuarios con roles (admin/vendedor).
-- Gráfico de ventas por período.
+- [x] **Historial de movimientos de stock (auditoría)** — cada alta, ajuste manual, venta y cancelación queda registrada en `movimientos_stock` con el stock resultante, quién lo hizo y de qué pedido viene (si aplica). Botón "Historial" en Productos (admin).
+- [x] **Múltiples usuarios con roles (admin/vendedor)** — un vendedor puede vender (crear/consultar pedidos, ver clientes y productos) pero no toca precios/stock, no ve el dashboard financiero, no exporta y no gestiona usuarios. Ver tabla de permisos en `backend/src/middleware/auth.js` (`requireRole`) y las rutas gateadas en `server.js`.
+- [x] **Exportar pedidos a CSV/PDF** — respeta los filtros activos del listado (estado/fecha). CSV con BOM UTF-8 para que Excel abra bien los acentos; PDF generado con `pdfkit`.
+- [x] **Gráfico de ventas por período** — barras (día/semana/mes) en el dashboard, hecho a mano en SVG inline (sin librería de charts).
 
 ## Qué mostrar en el portfolio
 
@@ -129,8 +148,11 @@ solos. El schema y los datos de ejemplo se cargan automáticamente la
 primera vez que se crea el volumen de MySQL (vía
 `docker-entrypoint-initdb.d`) — no hace falta correr nada a mano.
 
-Entrá a `http://localhost:5173/login` con **admin@stockmanager.com** /
-**admin123**.
+Entrá a `http://localhost:5173/login` con alguno de los dos usuarios de
+prueba (ver rol admin vs. vendedor en la sección de funcionalidades extra):
+
+- **admin@stockmanager.com** / **admin123**
+- **vendedor@stockmanager.com** / **vendedor123**
 
 Para reconstruir las imágenes después de cambiar dependencias
 (`package.json`): `docker compose up -d --build`.
@@ -170,4 +192,5 @@ npm run dev              # http://localhost:5173
 ```
 
 Con los tres servicios arriba (MySQL, backend, frontend, sea por Docker o
-local), entrá a `http://localhost:5173/login` con el usuario de prueba.
+local), entrá a `http://localhost:5173/login` con alguno de los usuarios de
+prueba (ver arriba).

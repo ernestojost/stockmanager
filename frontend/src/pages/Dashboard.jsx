@@ -1,10 +1,45 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import client from '../api/client';
+import { useAuth } from '../context/AuthContext';
+import ChartVentas from '../components/ChartVentas';
 
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
-export default function Dashboard() {
+const PERIODOS = [
+  { value: 'dia', label: 'Día' },
+  { value: 'semana', label: 'Semana' },
+  { value: 'mes', label: 'Mes' },
+];
+
+function VendedorLanding() {
+  const { usuario } = useAuth();
+  return (
+    <div>
+      <h2>Hola, {usuario?.nombre}</h2>
+      <p className="muted">Accesos rápidos:</p>
+      <div className="cards-row">
+        <Link to="/pedidos/nuevo" className="card card-link">
+          <div className="card-label">Nuevo pedido</div>
+          <div className="card-value card-value-sm">Crear pedido para un cliente</div>
+        </Link>
+        <Link to="/pedidos" className="card card-link">
+          <div className="card-label">Pedidos</div>
+          <div className="card-value card-value-sm">Ver y actualizar estado</div>
+        </Link>
+        <Link to="/productos" className="card card-link">
+          <div className="card-label">Productos</div>
+          <div className="card-value card-value-sm">Consultar stock y precios</div>
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function AdminDashboard() {
   const [resumen, setResumen] = useState(null);
+  const [ventas, setVentas] = useState(null);
+  const [agrupacion, setAgrupacion] = useState('dia');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -13,6 +48,13 @@ export default function Dashboard() {
       .then(({ data }) => setResumen(data))
       .catch(() => setError('No se pudo cargar el dashboard'));
   }, []);
+
+  useEffect(() => {
+    client
+      .get('/dashboard/ventas', { params: { agrupacion } })
+      .then(({ data }) => setVentas(data))
+      .catch(() => setVentas([]));
+  }, [agrupacion]);
 
   if (error) return <div className="form-error">{error}</div>;
   if (!resumen) return <p className="muted">Cargando…</p>;
@@ -35,6 +77,29 @@ export default function Dashboard() {
             {resumen.productos_mas_vendidos[0]?.nombre || '—'}
           </div>
         </div>
+      </div>
+
+      <div className="chart-section">
+        <div className="chart-section-header">
+          <h3>Ventas por período</h3>
+          <div className="periodo-toggle">
+            {PERIODOS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                className={agrupacion === p.value ? 'active' : ''}
+                onClick={() => setAgrupacion(p.value)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {ventas === null ? (
+          <p className="muted">Cargando…</p>
+        ) : (
+          <ChartVentas datos={ventas} agrupacion={agrupacion} />
+        )}
       </div>
 
       <h3>Top 5 productos más vendidos</h3>
@@ -63,4 +128,9 @@ export default function Dashboard() {
       </table>
     </div>
   );
+}
+
+export default function Dashboard() {
+  const { isAdmin } = useAuth();
+  return isAdmin ? <AdminDashboard /> : <VendedorLanding />;
 }
