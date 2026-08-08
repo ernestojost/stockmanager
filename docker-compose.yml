@@ -1,0 +1,22 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: stockmanager-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: stockmanager
+      MYSQL_USER: stockmanager
+      MYSQL_PASSWORD: stockmanager
+    ports:
+      - "3306:3306"
+    volumes:
+      - stockmanager-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  stockmanager-mysql-data:
