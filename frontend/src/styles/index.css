@@ -66,12 +66,27 @@ h3 {
 .topbar-brand {
   font-weight: 700;
   font-size: 16px;
+  flex-shrink: 0;
 }
 
 .topbar-nav {
   display: flex;
   gap: 4px;
   flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar-nav::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .topbar-nav {
+    /* Hints that the strip scrolls when there isn't room for every link. */
+    -webkit-mask-image: linear-gradient(to right, black calc(100% - 20px), transparent);
+    mask-image: linear-gradient(to right, black calc(100% - 20px), transparent);
+  }
 }
 
 .nav-link {
@@ -80,6 +95,8 @@ h3 {
   color: var(--color-text-muted);
   text-decoration: none;
   font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .nav-link:hover {
@@ -91,10 +108,18 @@ h3 {
   color: #fff;
 }
 
+/* The Dashboard route wears the Register-Tape Ledger world (see DESIGN.md) —
+   its nav pill uses that world's own accent instead of the app's default
+   blue, so the first eyeful landing on "/" isn't two different blues. */
+.nav-link-ledger.active {
+  background: #2a3a8c;
+}
+
 .topbar-user {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .content {
@@ -579,5 +604,276 @@ h3 {
 
   .cards-row {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ============================================================================
+   Register-Tape Ledger — Dashboard visual world (scoped to .dashboard-ledger)
+   See DESIGN.md. Deliberately does not extend to the rest of the app: the
+   Dashboard route is this project's portfolio "hero" and gets its own
+   identity; Productos/Clientes/Pedidos keep the plain system above.
+   ============================================================================ */
+
+.dashboard-ledger {
+  --paper: #f6f2e7;
+  --paper-raised: #fbf9f2;
+  --ink: #1b1a17;
+  --ink-muted: #58523f;
+  --ink-faint: #a49d8a;
+  --rule: #c9c2ae;
+  --stamp: #2a3a8c;
+  --stamp-deep: #1e2a68;
+  --reg-red: #a3271f;
+  --reg-red-bg: #f4e6e2;
+  --font-data: ui-monospace, 'SFMono-Regular', 'IBM Plex Mono', Menlo, Consolas, monospace;
+
+  background: var(--paper);
+  color: var(--ink);
+  margin: -20px -24px 0;
+  padding: 28px 24px 48px;
+  min-height: calc(100vh - 53px);
+}
+
+.dashboard-ledger h2 {
+  font-size: 20px;
+  letter-spacing: -0.01em;
+}
+
+.dashboard-ledger h3 {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin: 0;
+}
+
+.dashboard-ledger .muted {
+  color: var(--ink-muted);
+}
+
+/* ---- Ticket row (stat cards replacement) ---- */
+
+.dashboard-ledger .ticket-row {
+  display: flex;
+  border-top: 1px dashed var(--rule);
+  margin-top: 20px;
+}
+
+.dashboard-ledger .ticket-row-edge {
+  height: 9px;
+  background:
+    linear-gradient(135deg, transparent 71%, var(--paper) 75%) 0 0 / 9px 9px repeat-x,
+    linear-gradient(45deg, transparent 71%, var(--paper) 75%) 0 0 / 9px 9px repeat-x;
+  background-color: var(--rule);
+  margin-bottom: 28px;
+}
+
+.dashboard-ledger .ticket {
+  flex: 1;
+  padding: 16px 20px;
+  border-left: 1px dashed var(--rule);
+}
+
+.dashboard-ledger .ticket:first-child {
+  border-left: none;
+}
+
+.dashboard-ledger .ticket-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+}
+
+.dashboard-ledger .ticket-value {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dashboard-ledger .ticket-value.ticket-value-sm {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* ---- Chart section ---- */
+
+.dashboard-ledger .chart-section {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 32px;
+}
+
+.dashboard-ledger .chart-section-header {
+  align-items: baseline;
+  margin-bottom: 14px;
+}
+
+.dashboard-ledger .periodo-toggle {
+  gap: 0;
+  border: 1px solid var(--rule);
+}
+
+.dashboard-ledger .periodo-toggle button {
+  background: transparent;
+  color: var(--ink-muted);
+  border: none;
+  border-radius: 0;
+  border-right: 1px solid var(--rule);
+  padding: 6px 14px;
+}
+
+.dashboard-ledger .periodo-toggle button:last-child {
+  border-right: none;
+}
+
+.dashboard-ledger .periodo-toggle button:hover:not(.active) {
+  background: var(--paper-raised);
+}
+
+.dashboard-ledger .periodo-toggle button.active {
+  background: var(--stamp);
+  border-color: var(--stamp);
+  color: var(--paper-raised);
+}
+
+.dashboard-ledger .chart-baseline {
+  stroke: var(--rule);
+  stroke-dasharray: 3 3;
+}
+
+.dashboard-ledger .chart-bar {
+  fill: var(--stamp);
+}
+
+.dashboard-ledger .chart-bar-hover {
+  fill: var(--stamp-deep);
+}
+
+.dashboard-ledger .chart-value-label {
+  fill: var(--ink);
+  font-family: var(--font-data);
+}
+
+.dashboard-ledger .chart-axis-label {
+  fill: var(--ink-muted);
+  font-family: var(--font-data);
+}
+
+.dashboard-ledger .chart-tooltip {
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+.dashboard-ledger .chart-tooltip .muted {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ---- Top products table ---- */
+
+.dashboard-ledger .table {
+  border: none;
+  border-radius: 0;
+  border-top: 1px dashed var(--rule);
+}
+
+.dashboard-ledger .table th {
+  background: transparent;
+  color: var(--ink-muted);
+  border-bottom: 1px solid var(--rule);
+  letter-spacing: 0.08em;
+}
+
+.dashboard-ledger .table td {
+  border-bottom: 1px dashed var(--rule);
+  background: transparent;
+}
+
+.dashboard-ledger .table tbody tr:hover {
+  background: var(--paper-raised);
+}
+
+.dashboard-ledger .table td:last-child {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Vendedor landing (quick-action tickets) ---- */
+
+.dashboard-ledger--compact {
+  min-height: 0;
+}
+
+.dashboard-ledger .ticket-link-row {
+  display: flex;
+  border-top: 1px dashed var(--rule);
+  margin-top: 24px;
+}
+
+.dashboard-ledger .ticket-link {
+  flex: 1;
+  display: block;
+  padding: 20px;
+  border-left: 1px dashed var(--rule);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s;
+}
+
+.dashboard-ledger .ticket-link:first-child {
+  border-left: none;
+}
+
+.dashboard-ledger .ticket-link:hover {
+  background: var(--paper-raised);
+}
+
+.dashboard-ledger .ticket-link:hover .ticket-link-label {
+  color: var(--stamp);
+}
+
+.dashboard-ledger .ticket-link-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+  margin-bottom: 8px;
+  transition: color 0.12s;
+}
+
+.dashboard-ledger .ticket-link-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+@media (max-width: 640px) {
+  .dashboard-ledger .ticket-row,
+  .dashboard-ledger .ticket-link-row {
+    flex-direction: column;
+  }
+
+  .dashboard-ledger .ticket,
+  .dashboard-ledger .ticket-link {
+    border-left: none;
+    border-top: 1px dashed var(--rule);
+  }
+
+  .dashboard-ledger .ticket:first-child,
+  .dashboard-ledger .ticket-link:first-child {
+    border-top: none;
   }
 }

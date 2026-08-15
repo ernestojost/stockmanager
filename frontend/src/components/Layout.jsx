@@ -23,7 +23,12 @@ export default function Layout() {
               key={link.to}
               to={link.to}
               end={link.end}
-              className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+              className={({ isActive }) => {
+                const classes = ['nav-link'];
+                if (isActive) classes.push('active');
+                if (link.to === '/') classes.push('nav-link-ledger');
+                return classes.join(' ');
+              }}
             >
               {link.label}
             </NavLink>

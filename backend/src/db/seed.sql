@@ -30,3 +30,17 @@ INSERT INTO clientes (nombre, telefono, email) VALUES
   ('Juan Pérez', '11-5555-1234', 'juanperez@example.com'),
   ('María Gómez', '11-5555-5678', 'mariagomez@example.com'),
   ('Kiosco Don Ramón', '11-5555-9012', NULL);
+
+-- Pedidos históricos de relleno para que el dashboard (gráfico de ventas por
+-- período) no arranque mostrando una sola barra. No tienen pedido_items
+-- asociados a propósito -- son solo para que el total/fecha se vea en el
+-- gráfico, no afectan "productos más vendidos" ni el stock.
+INSERT INTO pedidos (cliente_id, usuario_id, estado, total, created_at) VALUES
+  (1, 1, 'entregado', 2600.00, DATE_SUB(NOW(), INTERVAL 1 DAY)),
+  (2, 1, 'entregado', 4500.00, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+  (3, 1, 'entregado', 1800.00, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+  (1, 1, 'entregado', 3300.00, DATE_SUB(NOW(), INTERVAL 5 DAY)),
+  (2, 1, 'entregado', 5400.00, DATE_SUB(NOW(), INTERVAL 6 DAY)),
+  (1, 1, 'entregado', 900.00,  DATE_SUB(NOW(), INTERVAL 9 DAY)),
+  (3, 1, 'entregado', 7200.00, DATE_SUB(NOW(), INTERVAL 13 DAY)),
+  (2, 1, 'entregado', 2200.00, DATE_SUB(NOW(), INTERVAL 20 DAY));

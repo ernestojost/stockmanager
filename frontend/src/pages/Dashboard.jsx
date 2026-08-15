@@ -4,6 +4,24 @@ import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import ChartVentas from '../components/ChartVentas';
 
+/*
+ * THESIS: The Dashboard is a running paper tape, not a SaaS admin panel —
+ *   every number reads freshly printed, refusing the soft-shadow stat-card
+ *   grid every dashboard ships.
+ * OWN-WORLD: Warm ledger paper, tabular monospace figures, black ink by
+ *   default with a single stamped-indigo accent, dashed rules standing in
+ *   for card borders. Flat — no shadows, no rounded corners.
+ * STORY: A viewer (admin, or a recruiter skimming this as a portfolio
+ *   piece) reads "this is a live system of record," not a mockup.
+ * FIRST VIEWPORT: A ticket row of three KPIs separated by dashed rules,
+ *   a torn-edge perforation beneath it, then the sales chart on a dashed
+ *   baseline, then the top-products ledger table.
+ * FORM: "Register-Tape Ledger" — POS/register-receipt world, direction 7
+ *   of the resonance-ordered candidate list, assigned by concept-seed.mjs
+ *   (seed 333827d7), confirmed by the user over the "Pipe Organ Keydesk"
+ *   challenger. Scoped to this route only — see DESIGN.md.
+ */
+
 const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
 
 const PERIODOS = [
@@ -15,23 +33,24 @@ const PERIODOS = [
 function VendedorLanding() {
   const { usuario } = useAuth();
   return (
-    <div>
+    <div className="dashboard-ledger dashboard-ledger--compact">
       <h2>Hola, {usuario?.nombre}</h2>
       <p className="muted">Accesos rápidos:</p>
-      <div className="cards-row">
-        <Link to="/pedidos/nuevo" className="card card-link">
-          <div className="card-label">Nuevo pedido</div>
-          <div className="card-value card-value-sm">Crear pedido para un cliente</div>
+      <div className="ticket-link-row">
+        <Link to="/pedidos/nuevo" className="ticket-link">
+          <div className="ticket-link-label">Nuevo pedido</div>
+          <div className="ticket-link-value">Crear pedido para un cliente</div>
         </Link>
-        <Link to="/pedidos" className="card card-link">
-          <div className="card-label">Pedidos</div>
-          <div className="card-value card-value-sm">Ver y actualizar estado</div>
+        <Link to="/pedidos" className="ticket-link">
+          <div className="ticket-link-label">Pedidos</div>
+          <div className="ticket-link-value">Ver y actualizar estado</div>
         </Link>
-        <Link to="/productos" className="card card-link">
-          <div className="card-label">Productos</div>
-          <div className="card-value card-value-sm">Consultar stock y precios</div>
+        <Link to="/productos" className="ticket-link">
+          <div className="ticket-link-label">Productos</div>
+          <div className="ticket-link-value">Consultar stock y precios</div>
         </Link>
       </div>
+      <div className="ticket-row-edge" aria-hidden="true" />
     </div>
   );
 }
@@ -56,28 +75,30 @@ function AdminDashboard() {
       .catch(() => setVentas([]));
   }, [agrupacion]);
 
-  if (error) return <div className="form-error">{error}</div>;
-  if (!resumen) return <p className="muted">Cargando…</p>;
+  if (error) return <div className="dashboard-ledger form-error">{error}</div>;
+  if (!resumen) return <p className="dashboard-ledger muted">Cargando…</p>;
 
   return (
-    <div>
+    <div className="dashboard-ledger">
       <h2>Dashboard</h2>
-      <div className="cards-row">
-        <div className="card">
-          <div className="card-label">Total vendido este mes</div>
-          <div className="card-value">{formatoMoneda.format(resumen.total_vendido_mes)}</div>
+
+      <div className="ticket-row">
+        <div className="ticket">
+          <div className="ticket-label">Total vendido este mes</div>
+          <div className="ticket-value">{formatoMoneda.format(resumen.total_vendido_mes)}</div>
         </div>
-        <div className="card">
-          <div className="card-label">Pedidos pendientes</div>
-          <div className="card-value">{resumen.pedidos_pendientes}</div>
+        <div className="ticket">
+          <div className="ticket-label">Pedidos pendientes</div>
+          <div className="ticket-value">{resumen.pedidos_pendientes}</div>
         </div>
-        <div className="card">
-          <div className="card-label">Producto más vendido</div>
-          <div className="card-value card-value-sm">
+        <div className="ticket">
+          <div className="ticket-label">Producto más vendido</div>
+          <div className="ticket-value ticket-value-sm">
             {resumen.productos_mas_vendidos[0]?.nombre || '—'}
           </div>
         </div>
       </div>
+      <div className="ticket-row-edge" aria-hidden="true" />
 
       <div className="chart-section">
         <div className="chart-section-header">

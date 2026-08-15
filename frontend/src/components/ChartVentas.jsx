@@ -8,21 +8,6 @@ const formatoEje = {
   mes: (iso) => new Date(iso).toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
 };
 
-// Rectángulo con esquinas redondeadas solo arriba (la barra "nace" del baseline).
-function barPath(x, width, yTop, yBase, radius) {
-  const r = Math.min(radius, width / 2, Math.max(yBase - yTop, 0));
-  if (r <= 0) return `M${x},${yBase} L${x},${yTop} L${x + width},${yTop} L${x + width},${yBase} Z`;
-  return `
-    M${x},${yBase}
-    L${x},${yTop + r}
-    Q${x},${yTop} ${x + r},${yTop}
-    L${x + width - r},${yTop}
-    Q${x + width},${yTop} ${x + width},${yTop + r}
-    L${x + width},${yBase}
-    Z
-  `;
-}
-
 export default function ChartVentas({ datos, agrupacion }) {
   const [hover, setHover] = useState(null);
 
@@ -73,8 +58,11 @@ export default function ChartVentas({ datos, agrupacion }) {
             >
               {/* hit target más ancho que la barra visible */}
               <rect x={padding.left + i * band} y={padding.top} width={band} height={plotH} fill="transparent" />
-              <path
-                d={barPath(x, barWidth, yTop, baseline, 4)}
+              <rect
+                x={x}
+                y={yTop}
+                width={barWidth}
+                height={Math.max(baseline - yTop, 0)}
                 className={isHover ? 'chart-bar chart-bar-hover' : 'chart-bar'}
               />
               {isMax && (
