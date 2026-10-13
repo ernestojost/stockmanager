@@ -6,7 +6,7 @@ export class ApiError extends Error {
 }
 
 export function notFoundHandler(req, res) {
-  res.status(404).json({ error: 'Recurso no encontrado' });
+  res.status(404).json({ error: 'Resource not found' });
 }
 
 // eslint-disable-next-line no-unused-vars
@@ -15,7 +15,7 @@ export function errorHandler(err, req, res, next) {
   if (status === 500) {
     console.error(err);
   }
-  res.status(status).json({ error: err.message || 'Error interno del servidor' });
+  res.status(status).json({ error: err.message || 'Internal server error' });
 }
 
 export function asyncHandler(fn) {

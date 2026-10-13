@@ -2,85 +2,85 @@ import { useEffect, useState, useCallback } from 'react';
 import client from '../api/client';
 import Modal from '../components/Modal';
 
-const FORM_VACIO = { nombre: '', email: '', password: '', rol: 'vendedor' };
+const EMPTY_FORM = { name: '', email: '', password: '', role: 'seller' };
 
-export default function Usuarios() {
-  const [usuarios, setUsuarios] = useState([]);
-  const [abierto, setAbierto] = useState(false);
-  const [form, setForm] = useState(FORM_VACIO);
+export default function Users() {
+  const [users, setUsers] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
-  const [guardando, setGuardando] = useState(false);
+  const [saving, setSaving] = useState(false);
 
-  const cargar = useCallback(() => {
-    client.get('/usuarios').then(({ data }) => setUsuarios(data));
+  const load = useCallback(() => {
+    client.get('/users').then(({ data }) => setUsers(data));
   }, []);
 
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    load();
+  }, [load]);
 
-  async function guardar(e) {
+  async function save(e) {
     e.preventDefault();
     setError('');
-    setGuardando(true);
+    setSaving(true);
     try {
-      await client.post('/usuarios', form);
-      setAbierto(false);
-      setForm(FORM_VACIO);
-      cargar();
+      await client.post('/users', form);
+      setOpen(false);
+      setForm(EMPTY_FORM);
+      load();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo crear el usuario');
+      setError(err.response?.data?.error || 'Could not create the user');
     } finally {
-      setGuardando(false);
+      setSaving(false);
     }
   }
 
   return (
     <div>
       <div className="page-header">
-        <h2>Usuarios</h2>
-        <button type="button" className="btn btn-primary" onClick={() => setAbierto(true)}>
-          + Nuevo usuario
+        <h2>Users</h2>
+        <button type="button" className="btn btn-primary" onClick={() => setOpen(true)}>
+          + New user
         </button>
       </div>
 
       <table className="table">
         <thead>
           <tr>
-            <th>Nombre</th>
+            <th>Name</th>
             <th>Email</th>
-            <th>Rol</th>
+            <th>Role</th>
           </tr>
         </thead>
         <tbody>
-          {usuarios.map((u) => (
+          {users.map((u) => (
             <tr key={u.id}>
-              <td>{u.nombre}</td>
+              <td>{u.name}</td>
               <td>{u.email}</td>
               <td>
-                <span className={u.rol === 'admin' ? 'badge badge-success' : 'badge badge-neutral'}>{u.rol}</span>
+                <span className={u.role === 'admin' ? 'badge badge-success' : 'badge badge-neutral'}>{u.role}</span>
               </td>
             </tr>
           ))}
-          {usuarios.length === 0 && (
+          {users.length === 0 && (
             <tr>
               <td colSpan={3} className="muted">
-                No hay usuarios.
+                No users yet.
               </td>
             </tr>
           )}
         </tbody>
       </table>
 
-      {abierto && (
-        <Modal title="Nuevo usuario" onClose={() => setAbierto(false)}>
-          <form onSubmit={guardar}>
+      {open && (
+        <Modal title="New user" onClose={() => setOpen(false)}>
+          <form onSubmit={save}>
             <label className="field">
-              <span>Nombre</span>
+              <span>Name</span>
               <input
                 type="text"
-                value={form.nombre}
-                onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
                 required
                 autoFocus
               />
@@ -95,7 +95,7 @@ export default function Usuarios() {
               />
             </label>
             <label className="field">
-              <span>Contraseña</span>
+              <span>Password</span>
               <input
                 type="password"
                 value={form.password}
@@ -105,9 +105,9 @@ export default function Usuarios() {
               />
             </label>
             <label className="field">
-              <span>Rol</span>
-              <select value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value })}>
-                <option value="vendedor">Vendedor</option>
+              <span>Role</span>
+              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                <option value="seller">Seller</option>
                 <option value="admin">Admin</option>
               </select>
             </label>
@@ -115,11 +115,11 @@ export default function Usuarios() {
             {error && <div className="form-error">{error}</div>}
 
             <div className="modal-footer">
-              <button type="button" className="btn btn-ghost" onClick={() => setAbierto(false)}>
-                Cancelar
+              <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)}>
+                Cancel
               </button>
-              <button type="submit" className="btn btn-primary" disabled={guardando}>
-                {guardando ? 'Guardando…' : 'Guardar'}
+              <button type="submit" className="btn btn-primary" disabled={saving}>
+                {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
           </form>

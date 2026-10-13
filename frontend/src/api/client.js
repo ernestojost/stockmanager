@@ -17,7 +17,7 @@ client.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('sm_token');
-      localStorage.removeItem('sm_usuario');
+      localStorage.removeItem('sm_user');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }

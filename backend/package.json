@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "API REST de StockManager (inventario y pedidos) — Express + MySQL",
+  "description": "StockManager REST API (inventory and orders) — Express + MySQL",
   "main": "src/server.js",
   "scripts": {
     "dev": "nodemon --legacy-watch src/server.js",

@@ -12,7 +12,7 @@ services:
       - "3306:3306"
     volumes:
       - stockmanager-mysql-data:/var/lib/mysql
-      # Solo corren la primera vez, cuando el volumen de datos está vacío.
+      # Only run the first time, when the data volume is empty.
       - ./backend/src/db/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql:ro
       - ./backend/src/db/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql:ro
     healthcheck:

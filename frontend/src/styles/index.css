@@ -387,7 +387,7 @@ h3 {
   border-color: var(--color-primary);
 }
 
-/* ---------- Gráfico de ventas ---------- */
+/* ---------- Sales chart ---------- */
 
 .chart-section {
   background: var(--color-surface);
@@ -404,12 +404,12 @@ h3 {
   margin-bottom: 8px;
 }
 
-.periodo-toggle {
+.period-toggle {
   display: flex;
   gap: 4px;
 }
 
-.periodo-toggle button {
+.period-toggle button {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-muted);
@@ -420,13 +420,13 @@ h3 {
   border-radius: var(--radius);
 }
 
-.periodo-toggle button.active {
+.period-toggle button.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
   color: #fff;
 }
 
-.chart-ventas {
+.sales-chart {
   position: relative;
 }
 
@@ -551,9 +551,9 @@ h3 {
   font-size: 13px;
 }
 
-/* ---------- Pedido nuevo ---------- */
+/* ---------- New order ---------- */
 
-.pedido-nuevo-grid {
+.new-order-grid {
   display: grid;
   grid-template-columns: 1fr 1.3fr;
   gap: 24px;
@@ -590,7 +590,7 @@ h3 {
   border-radius: var(--radius);
 }
 
-.pedido-total {
+.order-total {
   text-align: right;
   font-size: 18px;
   font-weight: 700;
@@ -598,7 +598,7 @@ h3 {
 }
 
 @media (max-width: 860px) {
-  .pedido-nuevo-grid {
+  .new-order-grid {
     grid-template-columns: 1fr;
   }
 
@@ -611,7 +611,7 @@ h3 {
    Register-Tape Ledger — Dashboard visual world (scoped to .dashboard-ledger)
    See DESIGN.md. Deliberately does not extend to the rest of the app: the
    Dashboard route is this project's portfolio "hero" and gets its own
-   identity; Productos/Clientes/Pedidos keep the plain system above.
+   identity; Products/Customers/Orders keep the plain system above.
    ============================================================================ */
 
 .dashboard-ledger {
@@ -717,12 +717,12 @@ h3 {
   margin-bottom: 14px;
 }
 
-.dashboard-ledger .periodo-toggle {
+.dashboard-ledger .period-toggle {
   gap: 0;
   border: 1px solid var(--rule);
 }
 
-.dashboard-ledger .periodo-toggle button {
+.dashboard-ledger .period-toggle button {
   background: transparent;
   color: var(--ink-muted);
   border: none;
@@ -731,15 +731,15 @@ h3 {
   padding: 6px 14px;
 }
 
-.dashboard-ledger .periodo-toggle button:last-child {
+.dashboard-ledger .period-toggle button:last-child {
   border-right: none;
 }
 
-.dashboard-ledger .periodo-toggle button:hover:not(.active) {
+.dashboard-ledger .period-toggle button:hover:not(.active) {
   background: var(--paper-raised);
 }
 
-.dashboard-ledger .periodo-toggle button.active {
+.dashboard-ledger .period-toggle button.active {
   background: var(--stamp);
   border-color: var(--stamp);
   color: var(--paper-raised);
@@ -810,7 +810,7 @@ h3 {
   font-variant-numeric: tabular-nums;
 }
 
-/* ---- Vendedor landing (quick-action tickets) ---- */
+/* ---- Seller landing (quick-action tickets) ---- */
 
 .dashboard-ledger--compact {
   min-height: 0;

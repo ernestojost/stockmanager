@@ -14,7 +14,7 @@ export default function Modal({ title, onClose, children }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>{title}</h3>
-          <button type="button" className="btn btn-ghost" onClick={onClose} aria-label="Cerrar">
+          <button type="button" className="btn btn-ghost" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>

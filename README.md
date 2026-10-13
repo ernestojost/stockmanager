@@ -1,196 +1,325 @@
-# Sistema de Inventario y Pedidos (React + Express + MySQL) — "StockManager"
+# StockManager
 
-## Resumen
+**Real-time inventory and order management for small businesses — a full-stack React, Express and MySQL app built end to end, from the relational schema up.**
 
-Una SPA de gestión de inventario y pedidos para un negocio chico (podés orientarlo a una tienda de ropa, ferretería, o algo genérico). Frontend en **React puro** (sin Next.js — este proyecto es justamente para mostrar React sin el paraguas de un meta-framework), backend propio en **Express.js**, base de datos **MySQL**. Es el proyecto más "backend-heavy" de los tres: modelado de datos relacional real, API REST bien diseñada, lógica de negocio (stock, pedidos, totales).
+StockManager is an internal back-office panel for a small store. Staff create orders from a live product search, stock is decremented atomically the moment an order is placed (and restored if it is cancelled), every stock change is written to an audit trail, and admins get a sales dashboard, CSV/PDF exports and user management.
 
-## Por qué este proyecto
+![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
+![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8-4479a1?logo=mysql&logoColor=white)
+![JWT](https://img.shields.io/badge/Auth-JWT-orange)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ed?logo=docker&logoColor=white)
 
-- Conecta directo con tu experiencia real haciendo tiendas online freelance, sin depender de nombrar ninguna plataforma específica — es tu propia versión, hecha por vos de punta a punta.
-- Es el proyecto que más muestra diseño de base de datos y de API — lo que un reclutador técnico mira para evaluar seniority real.
-- React sin Next.js muestra que entendés los fundamentos (routing con React Router, manejo de estado, fetch a una API propia) y no dependés únicamente de las abstracciones de un framework.
+---
 
-## Stack técnico
+## Table of contents
 
-- **React** (Vite como bundler, no Create React App) + **React Router**
-- **Express.js** (API REST)
-- **MySQL** (con `mysql2` + queries directas, o Sequelize/Prisma si preferís un ORM — para este proyecto está bien mostrar SQL más "a mano" ya que el objetivo es demostrar modelado relacional)
-- Estado del frontend: Context API o Zustand alcanza, no hace falta Redux para este alcance
-- Auth simple con JWT (login de admin/empleado del negocio — no es multi-tenant, es un panel interno)
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Architecture](#architecture)
+- [Data model](#data-model)
+- [API reference](#api-reference)
+- [Getting started](#getting-started)
+- [Demo credentials](#demo-credentials)
+- [Project structure](#project-structure)
+- [Screenshots](#screenshots)
+- [Roadmap](#roadmap)
 
-## Funcionalidad principal (MVP)
+## Features
 
-1. **Login** (usuario admin del negocio).
-2. **Productos**: alta, edición, baja (soft delete), listado con stock actual, categoría, precio.
-3. **Clientes**: alta y listado básico (nombre, contacto).
-4. **Pedidos**: crear un pedido nuevo seleccionando cliente + productos + cantidades → calcula total automáticamente y **descuenta stock**.
-5. **Listado de pedidos** con estado (pendiente, entregado, cancelado) y filtro por fecha/estado.
-6. **Alerta de stock bajo**: productos por debajo de un umbral configurable se marcan visualmente en el listado.
-7. **Dashboard simple**: total vendido del mes, productos más vendidos, pedidos pendientes.
+- **JWT authentication** with two roles — `admin` and `seller` — enforced in the API (`403` on forbidden routes) and reflected in the UI (controls a seller can't use are hidden, not just disabled).
+- **Product catalog** — create, edit and soft-delete products with category, price, current stock and a configurable minimum-stock threshold. Products at or below their threshold are flagged as **low stock**.
+- **Customers** — searchable list and quick create.
+- **Order builder** — pick a customer, search products, add them to a cart, adjust quantities and watch the total update live. The order can never exceed available stock.
+- **Transactional stock control** — placing an order locks the affected product rows (`SELECT … FOR UPDATE`), validates stock, decrements it and writes the order inside a single transaction. Cancelling a pending order puts the stock back.
+- **Frozen line-item prices** — `order_items.unit_price` is captured at the time of sale, so later price changes never rewrite order history.
+- **Stock movement audit trail** — every initial stock entry, manual adjustment, sale and cancellation is recorded with the resulting stock level, the user who made it and the related order. Viewable per product from the Products page (admin).
+- **Order list** with status (`pending`, `delivered`, `cancelled`) and status/date-range filters.
+- **CSV and PDF export** of the order list, honoring the active filters (CSV is UTF-8 with BOM so it opens cleanly in Excel; PDF is generated server-side with `pdfkit`).
+- **Admin dashboard** — sales this month, pending orders, top-selling products, and a sales-by-period bar chart (day / week / month) hand-drawn in inline SVG with no charting library.
+- **User management** — admins can create users and assign roles.
 
-## Modelo de datos (MySQL)
+## Tech stack
 
-```sql
-usuarios (id, email, password_hash, nombre, rol ENUM('admin','vendedor'), created_at)
+| Layer     | Technology |
+|-----------|------------|
+| Frontend  | React 19, Vite, React Router 7, Axios, Context API, plain CSS (custom properties — no UI library) |
+| Backend   | Node.js 22, Express 4, `mysql2` (hand-written parameterized SQL, no ORM), `jsonwebtoken`, `bcryptjs`, `pdfkit` |
+| Database  | MySQL 8 (InnoDB, foreign keys, `CHECK` constraints, indexes) |
+| Tooling   | Docker Compose (MySQL + API + SPA with hot reload), nodemon, oxlint |
 
-categorias (id, nombre)
+React is used **without a meta-framework** on purpose: routing, state and data fetching are wired by hand to show the fundamentals. SQL is written by hand for the same reason — the goal is to show real relational modeling, not an ORM's defaults.
 
-productos (
-  id, nombre, descripcion, categoria_id FK,
-  precio, stock_actual, stock_minimo,
-  activo BOOLEAN, created_at
-)
-
-clientes (id, nombre, telefono, email, created_at)
-
-pedidos (
-  id, cliente_id FK, usuario_id FK,
-  estado ENUM('pendiente','entregado','cancelado'),
-  total, created_at
-)
-
-pedido_items (
-  id, pedido_id FK -> pedidos.id, producto_id FK -> productos.id,
-  cantidad, precio_unitario
-)
-
-movimientos_stock (
-  id, producto_id FK -> productos.id,
-  tipo ENUM('alta_inicial','ajuste_manual','venta','cancelacion'),
-  cantidad, stock_resultante,
-  pedido_id FK -> pedidos.id (nullable),
-  usuario_id FK -> usuarios.id, created_at
-)
-```
-
-Este es el proyecto donde más vale la pena mostrar el diagrama entidad-relación en el repo (un `schema.png` o `.sql` con comentarios) — es justo lo que un reclutador técnico quiere ver rápido sin leer todo el código.
-
-## Endpoints principales (API REST)
+## Architecture
 
 ```
-POST   /api/auth/login
-
-GET    /api/productos          GET /api/productos/:id
-POST   /api/productos*         PUT /api/productos/:id*      DELETE /api/productos/:id*
-GET    /api/productos/:id/movimientos*     (historial de stock)
-
-GET    /api/clientes           POST /api/clientes
-
-GET    /api/pedidos            GET /api/pedidos/:id
-POST   /api/pedidos            PATCH /api/pedidos/:id/estado
-GET    /api/pedidos/export*    (?formato=csv|pdf, mismos filtros que el listado)
-
-GET    /api/dashboard/resumen*             GET /api/dashboard/ventas*  (?agrupacion=dia|semana|mes)
-
-GET    /api/usuarios*          POST /api/usuarios*
-
-  * = solo rol admin (403 para vendedor)
+┌──────────────────────┐   HTTP + JWT     ┌──────────────────────┐    mysql2    ┌──────────────┐
+│  React SPA (Vite)    │ ───────────────▶ │  Express REST API    │ ───────────▶ │   MySQL 8    │
+│  React Router, Axios │ ◀─────────────── │  auth · roles · tx   │ ◀─────────── │   InnoDB     │
+└──────────────────────┘      JSON        └──────────────────────┘              └──────────────┘
+      :5173                                        :4000                              :3306
 ```
 
-## Páginas / rutas (frontend)
+- **`frontend/`** — single-page app. An Axios client attaches the bearer token and redirects to `/login` on `401`. Route guards (`ProtectedRoute`, `RequireAdmin`) mirror the API's role checks.
+- **`backend/`** — layered Express app: `routes/` → `controllers/` → a shared connection pool. `middleware/auth.js` provides `requireAuth` and `requireRole(...)`; `middleware/errorHandler.js` centralizes error responses. Multi-step writes (orders, stock adjustments, cancellations) run inside explicit transactions.
 
-- `/login`
-- `/` — Dashboard (admin) o accesos rápidos (vendedor)
-- `/productos` — Listado + alta/edición + historial de stock (admin); solo lectura para vendedor
-- `/clientes` — Listado + alta
-- `/pedidos` — Listado + filtros + export CSV/PDF (admin)
-- `/pedidos/nuevo` — Formulario de nuevo pedido (selección de productos con búsqueda, cálculo de total en vivo)
-- `/usuarios` — Alta de usuarios y asignación de rol (admin)
+## Data model
 
-## Diseño y UX
+The full, commented schema lives in [`backend/src/db/schema.sql`](backend/src/db/schema.sql).
 
-- Es un panel interno, no algo "de venta" — priorizá densidad de información y velocidad sobre estética llamativa (tablas claras, atajos de teclado si te da el tiempo, formularios rápidos).
-- El formulario de "nuevo pedido" es la pieza más compleja de UX: buscar producto → agregar a la lista → ajustar cantidad → ver total actualizarse. Vale la pena invertir tiempo ahí.
-- Validaciones reales: no dejar vender más stock del disponible, no permitir precios negativos, etc. — mostrar que pensaste los casos borde es lo que separa un CRUD de tutorial de un sistema real.
+```mermaid
+erDiagram
+    users ||--o{ orders : records
+    customers ||--o{ orders : places
+    categories ||--o{ products : groups
+    orders ||--|{ order_items : contains
+    products ||--o{ order_items : "appears in"
+    products ||--o{ stock_movements : "audited by"
+    orders ||--o{ stock_movements : "triggers"
+    users ||--o{ stock_movements : performs
 
-## Funcionalidades extra (implementadas)
+    users {
+        int id PK
+        varchar email UK
+        varchar password_hash
+        varchar name
+        enum role "admin | seller"
+        datetime created_at
+    }
+    categories {
+        int id PK
+        varchar name UK
+    }
+    products {
+        int id PK
+        varchar name
+        varchar description
+        int category_id FK
+        decimal price
+        int current_stock
+        int min_stock
+        boolean active
+        datetime created_at
+    }
+    customers {
+        int id PK
+        varchar name
+        varchar phone
+        varchar email
+        datetime created_at
+    }
+    orders {
+        int id PK
+        int customer_id FK
+        int user_id FK
+        enum status "pending | delivered | cancelled"
+        decimal total
+        datetime created_at
+    }
+    order_items {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        decimal unit_price
+    }
+    stock_movements {
+        int id PK
+        int product_id FK
+        enum type "initial_stock | manual_adjustment | sale | cancellation"
+        int quantity
+        int resulting_stock
+        int order_id FK
+        int user_id FK
+        datetime created_at
+    }
+```
 
-- [x] **Historial de movimientos de stock (auditoría)** — cada alta, ajuste manual, venta y cancelación queda registrada en `movimientos_stock` con el stock resultante, quién lo hizo y de qué pedido viene (si aplica). Botón "Historial" en Productos (admin).
-- [x] **Múltiples usuarios con roles (admin/vendedor)** — un vendedor puede vender (crear/consultar pedidos, ver clientes y productos) pero no toca precios/stock, no ve el dashboard financiero, no exporta y no gestiona usuarios. Ver tabla de permisos en `backend/src/middleware/auth.js` (`requireRole`) y las rutas gateadas en `server.js`.
-- [x] **Exportar pedidos a CSV/PDF** — respeta los filtros activos del listado (estado/fecha). CSV con BOM UTF-8 para que Excel abra bien los acentos; PDF generado con `pdfkit`.
-- [x] **Gráfico de ventas por período** — barras (día/semana/mes) en el dashboard, hecho a mano en SVG inline (sin librería de charts).
+Key design decisions:
 
-## Qué mostrar en el portfolio
+- `order_items` resolves the many-to-many relationship between `orders` and `products` and freezes `unit_price` at the time of sale.
+- Products are **soft-deleted** (`active = false`) so historical order lines keep a valid foreign key.
+- `stock_movements.quantity` is signed (`+` stock in, `-` stock out) and `resulting_stock` stores the level after the movement, so the history reads without recomputing running totals.
+- `CHECK` constraints guard against negative prices, negative stock and non-positive quantities at the database level, in addition to API validation.
 
-- **Código**: `EJ-0X`
-- **Descripción corta**: "Sistema de inventario y pedidos con control de stock en tiempo real — React, Express y MySQL de punta a punta."
-- **Stack tags**: `React`, `Express.js`, `MySQL`, `JWT`
-- Este es el proyecto ideal para linkear el repo del backend por separado si lo separás en dos repos (frontend/backend) — muestra que sabés estructurar un proyecto full-stack real, no todo mezclado.
+## API reference
 
-## Checklist para arrancar
+All routes are prefixed with `/api`. Every route except `POST /auth/login` and `GET /health` requires an `Authorization: Bearer <token>` header.
 
-- [x] Diseñar el schema de MySQL primero (antes que el código) — dibujalo o escribilo en SQL con comentarios
-- [x] `npm create vite@latest` para el frontend, proyecto Express separado para el backend
-- [x] Auth con JWT
-- [x] CRUD de productos y clientes
-- [x] Lógica de pedidos (con descuento de stock y validaciones)
-- [x] Dashboard con las 2-3 métricas clave
-- [ ] Deploy (frontend en Vercel/Netlify, backend + MySQL en Railway o Render)
+| Method   | Endpoint                    | Role   | Description |
+|----------|-----------------------------|--------|-------------|
+| `POST`   | `/auth/login`               | public | Returns `{ token, user }` |
+| `GET`    | `/health`                   | public | Health check |
+| `GET`    | `/categories`               | any    | List categories |
+| `GET`    | `/products`                 | any    | List products (`?search=`, `?category_id=`, `?active=true\|false`) |
+| `GET`    | `/products/:id`             | any    | Get a product |
+| `POST`   | `/products`                 | admin  | Create a product (records an `initial_stock` movement) |
+| `PUT`    | `/products/:id`             | admin  | Update a product (stock changes record a `manual_adjustment`) |
+| `DELETE` | `/products/:id`             | admin  | Soft-delete a product |
+| `GET`    | `/products/:id/movements`   | admin  | Stock movement history for a product |
+| `GET`    | `/customers`                | any    | List customers (`?search=`) |
+| `POST`   | `/customers`                | any    | Create a customer |
+| `GET`    | `/orders`                   | any    | List orders (`?status=`, `?from=YYYY-MM-DD`, `?to=YYYY-MM-DD`) |
+| `GET`    | `/orders/:id`               | any    | Get an order with its line items |
+| `POST`   | `/orders`                   | any    | Create an order: `{ customer_id, items: [{ product_id, quantity }] }` |
+| `PATCH`  | `/orders/:id/status`        | any    | Set status of a pending order to `delivered` or `cancelled` (cancelling restores stock) |
+| `GET`    | `/orders/export`            | admin  | Export orders (`?format=csv\|pdf`, same filters as the list) |
+| `GET`    | `/dashboard/summary`        | admin  | Sales this month, pending orders, top 5 products |
+| `GET`    | `/dashboard/sales`          | admin  | Sales totals by period (`?group_by=day\|week\|month`, `?from=`, `?to=`) |
+| `GET`    | `/users`                    | admin  | List users |
+| `POST`   | `/users`                    | admin  | Create a user (`role`: `admin` or `seller`) |
 
-## Cómo correr el proyecto
+Errors are returned as `{ "error": "message" }` with an appropriate status code (`400`, `401`, `403`, `404`, `500`).
 
-Estructura: `/backend` (API Express) y `/frontend` (SPA Vite+React) como dos
-proyectos independientes dentro de este repo, más un `docker-compose.yml` en
-la raíz que puede levantar solo MySQL o el stack completo.
+## Getting started
 
-### Opción A — Todo con Docker (más simple)
+### Option A — Docker Compose (recommended)
+
+Requires Docker with Compose v2.
 
 ```bash
+git clone <your-fork-url> stockmanager
+cd stockmanager
 docker compose up -d
 ```
 
-Levanta los tres servicios: MySQL 8 (`localhost:3306`), backend
-(`localhost:4000`) y frontend (`localhost:5173`). Los contenedores de
-backend/frontend montan el código fuente como volumen y corren con
-hot-reload (`nodemon --legacy-watch` / `vite --host` con polling), así que
-podés seguir editando en tu editor de siempre y los cambios se reflejan
-solos. El schema y los datos de ejemplo se cargan automáticamente la
-primera vez que se crea el volumen de MySQL (vía
-`docker-entrypoint-initdb.d`) — no hace falta correr nada a mano.
+This starts three services:
 
-Entrá a `http://localhost:5173/login` con alguno de los dos usuarios de
-prueba (ver rol admin vs. vendedor en la sección de funcionalidades extra):
+| Service  | URL                       |
+|----------|---------------------------|
+| Frontend | http://localhost:5173     |
+| API      | http://localhost:4000/api |
+| MySQL    | `localhost:3306`          |
 
-- **admin@stockmanager.com** / **admin123**
-- **vendedor@stockmanager.com** / **vendedor123**
+The backend and frontend containers mount the source code as volumes and run with hot reload (`nodemon --legacy-watch` / Vite with polling), so edits on your machine are picked up automatically. The schema and seed data are loaded automatically the first time the MySQL volume is created (via `docker-entrypoint-initdb.d`).
 
-Para reconstruir las imágenes después de cambiar dependencias
-(`package.json`): `docker compose up -d --build`.
+Open http://localhost:5173/login and sign in with one of the [demo accounts](#demo-credentials).
 
-### Opción B — Solo MySQL en Docker, backend/frontend con Node local
+After changing dependencies, rebuild with `docker compose up -d --build`. To reset the database to the seed state, run `docker compose down -v` and start again.
+
+### Option B — Manual setup
+
+Requires Node.js 22+ and MySQL 8 (or MariaDB 10.6+).
+
+**1. Database** — either start only the MySQL container:
 
 ```bash
 docker compose up -d mysql
 ```
 
-Esto levanta únicamente MySQL. Si el volumen ya tenía datos de una corrida
-anterior sin backend/frontend en Docker, cargá el schema y el seed a mano:
+…or use your own MySQL server and load the schema and seed data:
 
 ```bash
-docker exec -i stockmanager-mysql mysql -uroot -proot --default-character-set=utf8mb4 < backend/src/db/schema.sql
-docker exec -i stockmanager-mysql mysql -uroot -proot --default-character-set=utf8mb4 stockmanager < backend/src/db/seed.sql
+mysql -u root -p --default-character-set=utf8mb4 < backend/src/db/schema.sql
+mysql -u root -p --default-character-set=utf8mb4 stockmanager < backend/src/db/seed.sql
 ```
 
-(Si usás tu propio MySQL en vez de Docker: `mysql -u root -p --default-character-set=utf8mb4 < backend/src/db/schema.sql` y lo mismo con `seed.sql`.)
+> If you reuse an existing `stockmanager-mysql` volume that was created without the init scripts, load them into the container instead:
+>
+> ```bash
+> docker exec -i stockmanager-mysql mysql -uroot -proot --default-character-set=utf8mb4 < backend/src/db/schema.sql
+> docker exec -i stockmanager-mysql mysql -uroot -proot --default-character-set=utf8mb4 stockmanager < backend/src/db/seed.sql
+> ```
 
-Backend:
+**2. Backend**
 
 ```bash
 cd backend
-cp .env.example .env   # ajustá credenciales si no usás el docker-compose
+cp .env.example .env    # adjust DB credentials if you're not using docker-compose
 npm install
 npm run dev             # http://localhost:4000
 ```
 
-Frontend:
+**3. Frontend**
 
 ```bash
 cd frontend
-cp .env.example .env    # VITE_API_URL apunta a http://localhost:4000/api por defecto
+cp .env.example .env    # VITE_API_URL defaults to http://localhost:4000/api
 npm install
-npm run dev              # http://localhost:5173
+npm run dev             # http://localhost:5173
 ```
 
-Con los tres servicios arriba (MySQL, backend, frontend, sea por Docker o
-local), entrá a `http://localhost:5173/login` con alguno de los usuarios de
-prueba (ver arriba).
+### Environment variables
+
+| Variable          | Where    | Default                       |
+|-------------------|----------|-------------------------------|
+| `PORT`            | backend  | `4000`                        |
+| `DB_HOST`         | backend  | `127.0.0.1`                   |
+| `DB_PORT`         | backend  | `3306`                        |
+| `DB_USER`         | backend  | `stockmanager`                |
+| `DB_PASSWORD`     | backend  | `stockmanager`                |
+| `DB_NAME`         | backend  | `stockmanager`                |
+| `JWT_SECRET`      | backend  | `change-me-in-production`     |
+| `JWT_EXPIRES_IN`  | backend  | `8h`                          |
+| `CORS_ORIGIN`     | backend  | `http://localhost:5173`       |
+| `VITE_API_URL`    | frontend | `http://localhost:4000/api`   |
+
+## Demo credentials
+
+The seed data models a small hardware & general store (hand tools, fasteners, paint and cleaning supplies, prices in USD) with a few customers and historical orders so the dashboard has something to show.
+
+| Role   | Email                     | Password    | Can do |
+|--------|---------------------------|-------------|--------|
+| Admin  | `admin@stockmanager.com`  | `admin123`  | Everything: catalog & pricing, stock history, dashboard, exports, user management |
+| Seller | `seller@stockmanager.com` | `seller123` | Create and update orders, manage customers, browse products (read-only) |
+
+## Project structure
+
+```
+.
+├── backend/
+│   ├── src/
+│   │   ├── config/db.js              # mysql2 connection pool
+│   │   ├── controllers/              # request handlers + SQL
+│   │   │   ├── auth.controller.js
+│   │   │   ├── categories.controller.js
+│   │   │   ├── customers.controller.js
+│   │   │   ├── dashboard.controller.js
+│   │   │   ├── orders.controller.js
+│   │   │   ├── products.controller.js
+│   │   │   ├── stockMovements.controller.js
+│   │   │   └── users.controller.js
+│   │   ├── db/
+│   │   │   ├── schema.sql            # commented schema + ERD summary
+│   │   │   └── seed.sql              # demo data
+│   │   ├── middleware/               # requireAuth / requireRole, error handling
+│   │   ├── routes/                   # one router per resource
+│   │   └── server.js                 # app entry point
+│   ├── .env.example
+│   └── Dockerfile
+├── frontend/
+│   ├── src/
+│   │   ├── api/client.js             # Axios instance with auth interceptors
+│   │   ├── components/               # Layout, Modal, SalesChart, StatusBadge, StockBadge, route guards
+│   │   ├── context/AuthContext.jsx   # session state
+│   │   ├── pages/                    # Login, Dashboard, Products, Customers, Orders, NewOrder, Users
+│   │   ├── styles/index.css          # design tokens + component styles
+│   │   ├── App.jsx                   # routes
+│   │   └── main.jsx
+│   ├── .env.example
+│   └── Dockerfile
+├── docker-compose.yml
+├── DESIGN.md                         # dashboard visual design system
+└── PRODUCT.md                        # product brief, users and principles
+```
+
+## Screenshots
+
+| Dashboard | Products |
+|-----------|----------|
+| ![Admin dashboard](docs/screenshots/dashboard.png) | ![Product catalog](docs/screenshots/products.png) |
+
+| New order | Orders |
+|-----------|--------|
+| ![Order builder](docs/screenshots/new-order.png) | ![Order list with filters](docs/screenshots/orders.png) |
+
+| Customers | Login |
+|-----------|-------|
+| ![Customer list](docs/screenshots/customers.png) | ![Login](docs/screenshots/login.png) |
+
+## Roadmap
+
+- [ ] Deploy (frontend on Vercel/Netlify, API + MySQL on Railway or Render)
+- [ ] Automated API tests for order creation and cancellation flows
+- [ ] Keyboard shortcuts for the order builder

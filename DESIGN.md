@@ -36,7 +36,7 @@ components:
     textColor: "{colors.ink-primary}"
     rounded: "{rounded.none}"
     padding: "16px 20px"
-  periodo-toggle-active:
+  period-toggle-active:
     backgroundColor: "{colors.stamp-indigo}"
     textColor: "{colors.paper-raised}"
     rounded: "{rounded.none}"
@@ -60,9 +60,9 @@ soft rounded cards — a ledger page is flat by nature.
 
 This is currently the visual identity of the **Dashboard route only**
 (`frontend/src/pages/Dashboard.jsx` and `frontend/src/components/
-ChartVentas.jsx`) — the surface that doubles as this project's portfolio
+SalesChart.jsx`) — the surface that doubles as this project's portfolio
 "hero" view (see PRODUCT.md, Product Principles §4). The rest of the app
-(Productos, Clientes, Pedidos tables and forms, modals) intentionally
+(Products, Customers, Orders tables and forms, modals) intentionally
 keeps the prior plain, dense CSS system in `frontend/src/styles/
 index.css` — this is a deliberate scope boundary, not an oversight, and
 extending the ledger world to those surfaces is a separate decision.
@@ -87,7 +87,7 @@ Warm paper ground with two-tone ledger ink (black/red) plus one stamped accent; 
 - **Stamp Ink Indigo** (`#2a3a8c`): the one accent. Active period-toggle state, primary buttons/links inside the Dashboard, the sales-chart bars, focus rings. Hover/pressed state deepens to **Stamp Ink Indigo Deep** (`#1e2a68`).
 
 ### Secondary
-- **Register Red** (`#a3271f`) on **Register Red Wash** (`#f4e6e2`): reserved for negative/attention states inside the Dashboard — a stock-bajo signal, a cancelled-order figure. Never used for a primary action; its meaning must stay singular.
+- **Register Red** (`#a3271f`) on **Register Red Wash** (`#f4e6e2`): reserved for negative/attention states inside the Dashboard — a low-stock signal, a cancelled-order figure. Never used for a primary action; its meaning must stay singular.
 - **Register Green** (`#3d5c33`) on **Register Green Wash** (`#e9ede2`): the positive counterpart when a figure needs to read as healthy/on-track (e.g. a period's total above the prior one). Used at most as often as red — if both appear on a screen they must both be earned by an actual comparison, never applied decoratively.
 
 ### Neutral
@@ -111,7 +111,7 @@ Warm paper ground with two-tone ledger ink (black/red) plus one stamped accent; 
 **Character:** Numbers are typed on a register, not designed on a poster — tabular monospace gives every total a fixed-width, receipt-like column alignment. Labels stay in the app's ordinary system sans, but tracked out and capitalized like a printed header, so the two registers (label vs. data) are always visually distinct.
 
 ### Hierarchy
-- **Section title** (700, 20px, 1.2 line-height): page/section headings ("Dashboard", "Ventas por período").
+- **Section title** (700, 20px, 1.2 line-height): page/section headings ("Dashboard", "Sales by period").
 - **Stat value** (600, 26px, monospace, tabular-nums): the number in a stat ticket.
 - **Stat label** (600, 11px, uppercase, letter-spacing 0.08em): the caption above a stat value, printed-header style.
 - **Data cell** (400, 13–14px, monospace, tabular-nums): table figures, chart value labels, axis ticks.
@@ -143,13 +143,13 @@ Square corners throughout (`border-radius: 0`) — a receipt or ledger page has 
 - **Content:** uppercase tracked label on top (Muted Ink), then the value in monospace tabular figures (26px, Primary Ink by default; Register Red/Green only when the value is a signed comparison).
 - **Layout:** three per row on desktop, stacking to one column under 640px; separated from each other by a dashed vertical rule, not a gap-and-shadow grid.
 
-### Period Toggle (Día / Semana / Mes)
+### Period Toggle (Day / Week / Month)
 - **Shape:** square, sits together as one bordered strip (like punch-buttons on a register), not three separate pill buttons.
 - **Default:** transparent, Muted Ink text, 1px solid Rule border between segments.
 - **Active:** Stamp Ink Indigo fill, Raised Paper text — the only filled-color moment in the toggle group.
 - **Hover (inactive segment):** Raised Paper background wash, no color change.
 
-### Sales Chart (`ChartVentas`)
+### Sales Chart (`SalesChart`)
 - **Bars:** Stamp Ink Indigo, ≤24px thick, square at the baseline (no rounded cap — this diverges from the general dataviz-skill default specifically because the ledger world is square-cornered everywhere; consistency with Shapes wins here).
 - **Baseline/gridline:** dashed Rule, not solid.
 - **Value/axis labels:** monospace, Muted Ink.
@@ -168,11 +168,11 @@ The topbar is shared, app-wide chrome (`Layout.jsx`) and stays outside this worl
 - **Do** reserve Register Red and Register Green for an actual signed comparison or alert, never for decoration.
 - **Do** use the dashed rule / perforation motif as the only "divider" device on this surface.
 - **Do** keep Stamp Ink Indigo as the single accent; every other color on the Dashboard is ink-neutral (black/gray) or the red/green pair.
-- **Do** close a short section (e.g. the vendedor landing's single ticket-link row) with a `.ticket-row-edge` perforation rather than letting it trail into empty paper — the tape has a visible end, not a fade-out.
+- **Do** close a short section (e.g. the seller landing's single ticket-link row) with a `.ticket-row-edge` perforation rather than letting it trail into empty paper — the tape has a visible end, not a fade-out.
 - **Do** scope every Dashboard-world selector under `.dashboard-ledger` (or a component that only ever renders inside it) — a bare `.ticket`-style class name at the top level is a leak waiting to collide with a future unrelated component.
 
 ### Don't:
 - **Don't** add a drop shadow anywhere on the Dashboard.
 - **Don't** round a corner on the Dashboard — square only.
-- **Don't** extend this world to Productos/Clientes/Pedidos without a separate decision; those surfaces keep the prior plain system on purpose.
+- **Don't** extend this world to Products/Customers/Orders without a separate decision; those surfaces keep the prior plain system on purpose.
 - **Don't** introduce a second accent hue, an icon font, or a new web font — the monospace and sans stacks are both system fonts already available.

@@ -2,6 +2,7 @@
   "name": "frontend",
   "private": true,
   "version": "0.0.0",
+  "description": "StockManager web client (inventory and orders) — React + Vite",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,19 +1,19 @@
 -- ============================================================================
--- StockManager — schema de MySQL
+-- StockManager — MySQL schema
 --
--- Diagrama entidad-relación (resumen):
+-- Entity-relationship diagram (summary):
 --
---   usuarios (1) ──< pedidos (N)          un usuario (empleado/admin) registra pedidos
---   clientes (1) ──< pedidos (N)          un cliente puede tener muchos pedidos
---   categorias (1) ──< productos (N)      un producto pertenece a una categoría
---   pedidos (1) ──< pedido_items (N)      un pedido tiene muchas líneas
---   productos (1) ──< pedido_items (N)    un producto puede aparecer en muchas líneas
---   productos (1) ──< movimientos_stock (N)  cada cambio de stock queda auditado
---   pedidos (1) ──< movimientos_stock (N)    movimientos de tipo venta/cancelacion referencian su pedido
+--   users (1) ──< orders (N)               a user (staff/admin) records orders
+--   customers (1) ──< orders (N)           a customer can have many orders
+--   categories (1) ──< products (N)        a product belongs to one category
+--   orders (1) ──< order_items (N)         an order has many line items
+--   products (1) ──< order_items (N)       a product can appear on many line items
+--   products (1) ──< stock_movements (N)   every stock change is audited
+--   orders (1) ──< stock_movements (N)     sale/cancellation movements reference their order
 --
--- pedido_items es la tabla intermedia que resuelve el N:M entre pedidos y
--- productos, y además congela precio_unitario/cantidad al momento de la venta
--- (si el precio del producto cambia después, no afecta pedidos ya hechos).
+-- order_items is the junction table that resolves the N:M relationship between
+-- orders and products, and it also freezes unit_price/quantity at the time of
+-- sale (if the product's price changes later, past orders are not affected).
 -- ============================================================================
 
 CREATE DATABASE IF NOT EXISTS stockmanager
@@ -24,119 +24,119 @@ USE stockmanager;
 SET NAMES utf8mb4;
 
 -- ----------------------------------------------------------------------------
--- usuarios: login del panel interno (admin/empleados del negocio)
+-- users: back-office login (store admins and sellers)
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS usuarios (
+CREATE TABLE IF NOT EXISTS users (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   email         VARCHAR(150) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  nombre        VARCHAR(150) NOT NULL,
-  rol           ENUM('admin','vendedor') NOT NULL DEFAULT 'vendedor',
+  name          VARCHAR(150) NOT NULL,
+  role          ENUM('admin','seller') NOT NULL DEFAULT 'seller',
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
--- categorias: agrupan productos (ej. "Bebidas", "Herramientas")
+-- categories: group products (e.g. "Hand Tools", "Fasteners")
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS categorias (
-  id     INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(100) NOT NULL UNIQUE
+CREATE TABLE IF NOT EXISTS categories (
+  id   INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
--- productos: catálogo con stock. Baja es soft-delete (activo=false) para no
--- romper el historial de pedido_items que ya los referencian.
+-- products: catalog with stock levels. Deleting is a soft delete
+-- (active = false) so the order_items history that references them stays intact.
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS productos (
+CREATE TABLE IF NOT EXISTS products (
   id            INT AUTO_INCREMENT PRIMARY KEY,
-  nombre        VARCHAR(150) NOT NULL,
-  descripcion   VARCHAR(500) NULL,
-  categoria_id  INT NULL,
-  precio        DECIMAL(10,2) NOT NULL,
-  stock_actual  INT NOT NULL DEFAULT 0,
-  stock_minimo  INT NOT NULL DEFAULT 0,
-  activo        BOOLEAN NOT NULL DEFAULT TRUE,
+  name          VARCHAR(150) NOT NULL,
+  description   VARCHAR(500) NULL,
+  category_id   INT NULL,
+  price         DECIMAL(10,2) NOT NULL,
+  current_stock INT NOT NULL DEFAULT 0,
+  min_stock     INT NOT NULL DEFAULT 0,
+  active        BOOLEAN NOT NULL DEFAULT TRUE,
   created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_productos_categoria FOREIGN KEY (categoria_id)
-    REFERENCES categorias(id) ON DELETE SET NULL,
-  CONSTRAINT chk_productos_precio CHECK (precio >= 0),
-  CONSTRAINT chk_productos_stock_actual CHECK (stock_actual >= 0),
-  CONSTRAINT chk_productos_stock_minimo CHECK (stock_minimo >= 0)
+  CONSTRAINT fk_products_category FOREIGN KEY (category_id)
+    REFERENCES categories(id) ON DELETE SET NULL,
+  CONSTRAINT chk_products_price CHECK (price >= 0),
+  CONSTRAINT chk_products_current_stock CHECK (current_stock >= 0),
+  CONSTRAINT chk_products_min_stock CHECK (min_stock >= 0)
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_productos_categoria ON productos(categoria_id);
-CREATE INDEX idx_productos_activo ON productos(activo);
+CREATE INDEX idx_products_category ON products(category_id);
+CREATE INDEX idx_products_active ON products(active);
 
 -- ----------------------------------------------------------------------------
--- clientes: alta y listado básico
+-- customers: basic create and list
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS clientes (
+CREATE TABLE IF NOT EXISTS customers (
   id         INT AUTO_INCREMENT PRIMARY KEY,
-  nombre     VARCHAR(150) NOT NULL,
-  telefono   VARCHAR(50) NULL,
+  name       VARCHAR(150) NOT NULL,
+  phone      VARCHAR(50) NULL,
   email      VARCHAR(150) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 -- ----------------------------------------------------------------------------
--- pedidos: cabecera. total se calcula server-side a partir de pedido_items al
--- crear el pedido (suma de cantidad * precio_unitario).
+-- orders: order header. total is computed server-side from order_items when
+-- the order is created (sum of quantity * unit_price).
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS pedidos (
+CREATE TABLE IF NOT EXISTS orders (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  customer_id INT NOT NULL,
+  user_id     INT NOT NULL,
+  status      ENUM('pending','delivered','cancelled') NOT NULL DEFAULT 'pending',
+  total       DECIMAL(10,2) NOT NULL DEFAULT 0,
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customers(id),
+  CONSTRAINT fk_orders_user FOREIGN KEY (user_id) REFERENCES users(id)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_orders_customer ON orders(customer_id);
+CREATE INDEX idx_orders_user ON orders(user_id);
+CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_orders_created_at ON orders(created_at);
+
+-- ----------------------------------------------------------------------------
+-- order_items: order line items. unit_price is "frozen" at the time of sale
+-- (it does not reference the product's current price).
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS order_items (
   id         INT AUTO_INCREMENT PRIMARY KEY,
-  cliente_id INT NOT NULL,
-  usuario_id INT NOT NULL,
-  estado     ENUM('pendiente','entregado','cancelado') NOT NULL DEFAULT 'pendiente',
-  total      DECIMAL(10,2) NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_pedidos_cliente FOREIGN KEY (cliente_id) REFERENCES clientes(id),
-  CONSTRAINT fk_pedidos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+  order_id   INT NOT NULL,
+  product_id INT NOT NULL,
+  quantity   INT NOT NULL,
+  unit_price DECIMAL(10,2) NOT NULL,
+  CONSTRAINT fk_order_items_order FOREIGN KEY (order_id)
+    REFERENCES orders(id) ON DELETE CASCADE,
+  CONSTRAINT fk_order_items_product FOREIGN KEY (product_id)
+    REFERENCES products(id),
+  CONSTRAINT chk_order_items_quantity CHECK (quantity > 0)
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_pedidos_cliente ON pedidos(cliente_id);
-CREATE INDEX idx_pedidos_usuario ON pedidos(usuario_id);
-CREATE INDEX idx_pedidos_estado ON pedidos(estado);
-CREATE INDEX idx_pedidos_created_at ON pedidos(created_at);
+CREATE INDEX idx_order_items_order ON order_items(order_id);
+CREATE INDEX idx_order_items_product ON order_items(product_id);
 
 -- ----------------------------------------------------------------------------
--- pedido_items: líneas del pedido. precio_unitario queda "congelado" al
--- momento de la venta (no referencia el precio actual del producto).
+-- stock_movements: audit log of every change to products.current_stock.
+-- quantity is signed (+ stock in, - stock out); resulting_stock is the
+-- product's current_stock after applying this movement, so the history can be
+-- read without recomputing running totals.
 -- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS pedido_items (
+CREATE TABLE IF NOT EXISTS stock_movements (
   id              INT AUTO_INCREMENT PRIMARY KEY,
-  pedido_id       INT NOT NULL,
-  producto_id     INT NOT NULL,
-  cantidad        INT NOT NULL,
-  precio_unitario DECIMAL(10,2) NOT NULL,
-  CONSTRAINT fk_pedido_items_pedido FOREIGN KEY (pedido_id)
-    REFERENCES pedidos(id) ON DELETE CASCADE,
-  CONSTRAINT fk_pedido_items_producto FOREIGN KEY (producto_id)
-    REFERENCES productos(id),
-  CONSTRAINT chk_pedido_items_cantidad CHECK (cantidad > 0)
+  product_id      INT NOT NULL,
+  type            ENUM('initial_stock','manual_adjustment','sale','cancellation') NOT NULL,
+  quantity        INT NOT NULL,
+  resulting_stock INT NOT NULL,
+  order_id        INT NULL,
+  user_id         INT NOT NULL,
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_movements_product FOREIGN KEY (product_id) REFERENCES products(id),
+  CONSTRAINT fk_movements_order FOREIGN KEY (order_id) REFERENCES orders(id),
+  CONSTRAINT fk_movements_user FOREIGN KEY (user_id) REFERENCES users(id)
 ) ENGINE=InnoDB;
 
-CREATE INDEX idx_pedido_items_pedido ON pedido_items(pedido_id);
-CREATE INDEX idx_pedido_items_producto ON pedido_items(producto_id);
-
--- ----------------------------------------------------------------------------
--- movimientos_stock: auditoría de todo cambio en productos.stock_actual.
--- cantidad es signada (+ entra stock, - sale stock); stock_resultante es el
--- stock_actual del producto luego de aplicar este movimiento, así el
--- historial se puede leer sin tener que ir recalculando.
--- ----------------------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS movimientos_stock (
-  id               INT AUTO_INCREMENT PRIMARY KEY,
-  producto_id      INT NOT NULL,
-  tipo             ENUM('alta_inicial','ajuste_manual','venta','cancelacion') NOT NULL,
-  cantidad         INT NOT NULL,
-  stock_resultante INT NOT NULL,
-  pedido_id        INT NULL,
-  usuario_id       INT NOT NULL,
-  created_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_movimientos_producto FOREIGN KEY (producto_id) REFERENCES productos(id),
-  CONSTRAINT fk_movimientos_pedido FOREIGN KEY (pedido_id) REFERENCES pedidos(id),
-  CONSTRAINT fk_movimientos_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-) ENGINE=InnoDB;
-
-CREATE INDEX idx_movimientos_producto ON movimientos_stock(producto_id);
-CREATE INDEX idx_movimientos_pedido ON movimientos_stock(pedido_id);
+CREATE INDEX idx_movements_product ON stock_movements(product_id);
+CREATE INDEX idx_movements_order ON stock_movements(order_id);

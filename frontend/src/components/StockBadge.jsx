@@ -1,9 +1,9 @@
-export default function StockBadge({ stockActual, stockMinimo }) {
-  const bajo = stockActual <= stockMinimo;
+export default function StockBadge({ currentStock, minStock }) {
+  const low = currentStock <= minStock;
   return (
-    <span className={bajo ? 'badge badge-danger' : 'badge badge-neutral'}>
-      {stockActual}
-      {bajo && ' ⚠ bajo'}
+    <span className={low ? 'badge badge-danger' : 'badge badge-neutral'}>
+      {currentStock}
+      {low && ' ⚠ low'}
     </span>
   );
 }

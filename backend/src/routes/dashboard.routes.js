@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { getResumen, getVentasPorPeriodo } from '../controllers/dashboard.controller.js';
+import { getSummary, getSalesByPeriod } from '../controllers/dashboard.controller.js';
 
 const router = Router();
 
-router.get('/resumen', getResumen);
-router.get('/ventas', getVentasPorPeriodo);
+router.get('/summary', getSummary);
+router.get('/sales', getSalesByPeriod);
 
 export default router;

@@ -4,11 +4,11 @@ import ProtectedRoute, { RequireAdmin } from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import Productos from './pages/Productos';
-import Clientes from './pages/Clientes';
-import Pedidos from './pages/Pedidos';
-import PedidoNuevo from './pages/PedidoNuevo';
-import Usuarios from './pages/Usuarios';
+import Products from './pages/Products';
+import Customers from './pages/Customers';
+import Orders from './pages/Orders';
+import NewOrder from './pages/NewOrder';
+import Users from './pages/Users';
 
 export default function App() {
   return (
@@ -18,12 +18,12 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
-            <Route path="/productos" element={<Productos />} />
-            <Route path="/clientes" element={<Clientes />} />
-            <Route path="/pedidos" element={<Pedidos />} />
-            <Route path="/pedidos/nuevo" element={<PedidoNuevo />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/customers" element={<Customers />} />
+            <Route path="/orders" element={<Orders />} />
+            <Route path="/orders/new" element={<NewOrder />} />
             <Route element={<RequireAdmin />}>
-              <Route path="/usuarios" element={<Usuarios />} />
+              <Route path="/users" element={<Users />} />
             </Route>
           </Route>
         </Route>

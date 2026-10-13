@@ -20,7 +20,7 @@ export default function Login() {
       const from = location.state?.from?.pathname || '/';
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo iniciar sesión');
+      setError(err.response?.data?.error || 'Could not sign in');
     } finally {
       setLoading(false);
     }
@@ -30,7 +30,7 @@ export default function Login() {
     <div className="login-screen">
       <form className="login-card" onSubmit={handleSubmit}>
         <h1>StockManager</h1>
-        <p className="muted">Ingresá con tu usuario del negocio</p>
+        <p className="muted">Sign in with your store account</p>
 
         <label className="field">
           <span>Email</span>
@@ -44,7 +44,7 @@ export default function Login() {
         </label>
 
         <label className="field">
-          <span>Contraseña</span>
+          <span>Password</span>
           <input
             type="password"
             value={password}
@@ -56,7 +56,7 @@ export default function Login() {
         {error && <div className="form-error">{error}</div>}
 
         <button type="submit" className="btn btn-primary btn-block" disabled={loading}>
-          {loading ? 'Ingresando…' : 'Ingresar'}
+          {loading ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
     </div>

@@ -3,14 +3,14 @@ import { useAuth } from '../context/AuthContext';
 
 const links = [
   { to: '/', label: 'Dashboard', end: true, adminOnly: true },
-  { to: '/productos', label: 'Productos' },
-  { to: '/clientes', label: 'Clientes' },
-  { to: '/pedidos', label: 'Pedidos' },
-  { to: '/usuarios', label: 'Usuarios', adminOnly: true },
+  { to: '/products', label: 'Products' },
+  { to: '/customers', label: 'Customers' },
+  { to: '/orders', label: 'Orders' },
+  { to: '/users', label: 'Users', adminOnly: true },
 ];
 
 export default function Layout() {
-  const { usuario, logout, isAdmin } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const visibleLinks = links.filter((link) => !link.adminOnly || isAdmin);
 
   return (
@@ -36,11 +36,11 @@ export default function Layout() {
         </nav>
         <div className="topbar-user">
           <span>
-            {usuario?.nombre}
-            {!isAdmin && <span className="muted"> · vendedor</span>}
+            {user?.name}
+            {!isAdmin && <span className="muted"> · seller</span>}
           </span>
           <button type="button" className="btn btn-ghost" onClick={logout}>
-            Salir
+            Log out
           </button>
         </div>
       </header>

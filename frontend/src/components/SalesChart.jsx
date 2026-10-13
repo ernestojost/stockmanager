@@ -1,14 +1,14 @@
 import { useState } from 'react';
 
-const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 });
+const currencyFormat = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 
-const formatoEje = {
-  dia: (iso) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
-  semana: (iso) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' }),
-  mes: (iso) => new Date(iso).toLocaleDateString('es-AR', { month: 'short', year: '2-digit' }),
+const axisFormat = {
+  day: (iso) => new Date(iso).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+  week: (iso) => new Date(iso).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }),
+  month: (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
 };
 
-export default function ChartVentas({ datos, agrupacion }) {
+export default function SalesChart({ data, groupBy }) {
   const [hover, setHover] = useState(null);
 
   const width = 720;
@@ -18,19 +18,19 @@ export default function ChartVentas({ datos, agrupacion }) {
   const plotH = height - padding.top - padding.bottom;
   const baseline = padding.top + plotH;
 
-  const maxTotal = Math.max(1, ...datos.map((d) => Number(d.total)));
-  const n = datos.length;
+  const maxTotal = Math.max(1, ...data.map((d) => Number(d.total)));
+  const n = data.length;
   const band = n ? plotW / n : plotW;
   const barWidth = Math.min(24, band * 0.6);
-  const maxIndex = datos.reduce((best, d, i) => (Number(d.total) > Number(datos[best]?.total ?? -1) ? i : best), 0);
+  const maxIndex = data.reduce((best, d, i) => (Number(d.total) > Number(data[best]?.total ?? -1) ? i : best), 0);
 
   if (n === 0) {
-    return <p className="muted">No hay ventas en el período seleccionado.</p>;
+    return <p className="muted">No sales in the selected period.</p>;
   }
 
   return (
-    <div className="chart-ventas">
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Ventas por período" className="chart-svg">
+    <div className="sales-chart">
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Sales by period" className="chart-svg">
         <line
           x1={padding.left}
           x2={width - padding.right}
@@ -38,7 +38,7 @@ export default function ChartVentas({ datos, agrupacion }) {
           y2={baseline}
           className="chart-baseline"
         />
-        {datos.map((d, i) => {
+        {data.map((d, i) => {
           const total = Number(d.total);
           const barHeight = (total / maxTotal) * plotH;
           const x = padding.left + i * band + (band - barWidth) / 2;
@@ -48,7 +48,7 @@ export default function ChartVentas({ datos, agrupacion }) {
 
           return (
             <g
-              key={d.periodo}
+              key={d.period}
               onPointerEnter={() => setHover(i)}
               onPointerLeave={() => setHover((h) => (h === i ? null : h))}
               onFocus={() => setHover(i)}
@@ -56,7 +56,7 @@ export default function ChartVentas({ datos, agrupacion }) {
               tabIndex={0}
               className="chart-bar-group"
             >
-              {/* hit target más ancho que la barra visible */}
+              {/* hit target wider than the visible bar */}
               <rect x={padding.left + i * band} y={padding.top} width={band} height={plotH} fill="transparent" />
               <rect
                 x={x}
@@ -67,7 +67,7 @@ export default function ChartVentas({ datos, agrupacion }) {
               />
               {isMax && (
                 <text x={x + barWidth / 2} y={yTop - 6} textAnchor="middle" className="chart-value-label">
-                  {formatoMoneda.format(total)}
+                  {currencyFormat.format(total)}
                 </text>
               )}
               <text
@@ -76,17 +76,17 @@ export default function ChartVentas({ datos, agrupacion }) {
                 textAnchor="middle"
                 className="chart-axis-label"
               >
-                {formatoEje[agrupacion](d.periodo)}
+                {axisFormat[groupBy](d.period)}
               </text>
             </g>
           );
         })}
       </svg>
 
-      {hover !== null && datos[hover] && (
+      {hover !== null && data[hover] && (
         <div className="chart-tooltip">
-          <strong>{formatoMoneda.format(Number(datos[hover].total))}</strong>
-          <span className="muted"> · {formatoEje[agrupacion](datos[hover].periodo)}</span>
+          <strong>{currencyFormat.format(Number(data[hover].total))}</strong>
+          <span className="muted"> · {axisFormat[groupBy](data[hover].period)}</span>
         </div>
       )}
     </div>

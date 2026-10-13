@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import client from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import ChartVentas from '../components/ChartVentas';
+import SalesChart from '../components/SalesChart';
 
 /*
  * THESIS: The Dashboard is a running paper tape, not a SaaS admin panel —
@@ -22,32 +22,32 @@ import ChartVentas from '../components/ChartVentas';
  *   challenger. Scoped to this route only — see DESIGN.md.
  */
 
-const formatoMoneda = new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' });
+const currencyFormat = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
-const PERIODOS = [
-  { value: 'dia', label: 'Día' },
-  { value: 'semana', label: 'Semana' },
-  { value: 'mes', label: 'Mes' },
+const PERIODS = [
+  { value: 'day', label: 'Day' },
+  { value: 'week', label: 'Week' },
+  { value: 'month', label: 'Month' },
 ];
 
-function VendedorLanding() {
-  const { usuario } = useAuth();
+function SellerLanding() {
+  const { user } = useAuth();
   return (
     <div className="dashboard-ledger dashboard-ledger--compact">
-      <h2>Hola, {usuario?.nombre}</h2>
-      <p className="muted">Accesos rápidos:</p>
+      <h2>Hi, {user?.name}</h2>
+      <p className="muted">Quick actions:</p>
       <div className="ticket-link-row">
-        <Link to="/pedidos/nuevo" className="ticket-link">
-          <div className="ticket-link-label">Nuevo pedido</div>
-          <div className="ticket-link-value">Crear pedido para un cliente</div>
+        <Link to="/orders/new" className="ticket-link">
+          <div className="ticket-link-label">New order</div>
+          <div className="ticket-link-value">Create an order for a customer</div>
         </Link>
-        <Link to="/pedidos" className="ticket-link">
-          <div className="ticket-link-label">Pedidos</div>
-          <div className="ticket-link-value">Ver y actualizar estado</div>
+        <Link to="/orders" className="ticket-link">
+          <div className="ticket-link-label">Orders</div>
+          <div className="ticket-link-value">View and update status</div>
         </Link>
-        <Link to="/productos" className="ticket-link">
-          <div className="ticket-link-label">Productos</div>
-          <div className="ticket-link-value">Consultar stock y precios</div>
+        <Link to="/products" className="ticket-link">
+          <div className="ticket-link-label">Products</div>
+          <div className="ticket-link-value">Check stock and prices</div>
         </Link>
       </div>
       <div className="ticket-row-edge" aria-hidden="true" />
@@ -56,27 +56,27 @@ function VendedorLanding() {
 }
 
 function AdminDashboard() {
-  const [resumen, setResumen] = useState(null);
-  const [ventas, setVentas] = useState(null);
-  const [agrupacion, setAgrupacion] = useState('dia');
+  const [summary, setSummary] = useState(null);
+  const [sales, setSales] = useState(null);
+  const [groupBy, setGroupBy] = useState('day');
   const [error, setError] = useState('');
 
   useEffect(() => {
     client
-      .get('/dashboard/resumen')
-      .then(({ data }) => setResumen(data))
-      .catch(() => setError('No se pudo cargar el dashboard'));
+      .get('/dashboard/summary')
+      .then(({ data }) => setSummary(data))
+      .catch(() => setError('Could not load the dashboard'));
   }, []);
 
   useEffect(() => {
     client
-      .get('/dashboard/ventas', { params: { agrupacion } })
-      .then(({ data }) => setVentas(data))
-      .catch(() => setVentas([]));
-  }, [agrupacion]);
+      .get('/dashboard/sales', { params: { group_by: groupBy } })
+      .then(({ data }) => setSales(data))
+      .catch(() => setSales([]));
+  }, [groupBy]);
 
   if (error) return <div className="dashboard-ledger form-error">{error}</div>;
-  if (!resumen) return <p className="dashboard-ledger muted">Cargando…</p>;
+  if (!summary) return <p className="dashboard-ledger muted">Loading…</p>;
 
   return (
     <div className="dashboard-ledger">
@@ -84,17 +84,17 @@ function AdminDashboard() {
 
       <div className="ticket-row">
         <div className="ticket">
-          <div className="ticket-label">Total vendido este mes</div>
-          <div className="ticket-value">{formatoMoneda.format(resumen.total_vendido_mes)}</div>
+          <div className="ticket-label">Sales this month</div>
+          <div className="ticket-value">{currencyFormat.format(summary.month_sales_total)}</div>
         </div>
         <div className="ticket">
-          <div className="ticket-label">Pedidos pendientes</div>
-          <div className="ticket-value">{resumen.pedidos_pendientes}</div>
+          <div className="ticket-label">Pending orders</div>
+          <div className="ticket-value">{summary.pending_orders}</div>
         </div>
         <div className="ticket">
-          <div className="ticket-label">Producto más vendido</div>
+          <div className="ticket-label">Top-selling product</div>
           <div className="ticket-value ticket-value-sm">
-            {resumen.productos_mas_vendidos[0]?.nombre || '—'}
+            {summary.top_products[0]?.name || '—'}
           </div>
         </div>
       </div>
@@ -102,46 +102,46 @@ function AdminDashboard() {
 
       <div className="chart-section">
         <div className="chart-section-header">
-          <h3>Ventas por período</h3>
-          <div className="periodo-toggle">
-            {PERIODOS.map((p) => (
+          <h3>Sales by period</h3>
+          <div className="period-toggle">
+            {PERIODS.map((p) => (
               <button
                 key={p.value}
                 type="button"
-                className={agrupacion === p.value ? 'active' : ''}
-                onClick={() => setAgrupacion(p.value)}
+                className={groupBy === p.value ? 'active' : ''}
+                onClick={() => setGroupBy(p.value)}
               >
                 {p.label}
               </button>
             ))}
           </div>
         </div>
-        {ventas === null ? (
-          <p className="muted">Cargando…</p>
+        {sales === null ? (
+          <p className="muted">Loading…</p>
         ) : (
-          <ChartVentas datos={ventas} agrupacion={agrupacion} />
+          <SalesChart data={sales} groupBy={groupBy} />
         )}
       </div>
 
-      <h3>Top 5 productos más vendidos</h3>
+      <h3>Top 5 best-selling products</h3>
       <table className="table">
         <thead>
           <tr>
-            <th>Producto</th>
-            <th>Unidades vendidas</th>
+            <th>Product</th>
+            <th>Units sold</th>
           </tr>
         </thead>
         <tbody>
-          {resumen.productos_mas_vendidos.map((p) => (
+          {summary.top_products.map((p) => (
             <tr key={p.id}>
-              <td>{p.nombre}</td>
-              <td>{p.unidades_vendidas}</td>
+              <td>{p.name}</td>
+              <td>{p.units_sold}</td>
             </tr>
           ))}
-          {resumen.productos_mas_vendidos.length === 0 && (
+          {summary.top_products.length === 0 && (
             <tr>
               <td colSpan={2} className="muted">
-                Todavía no hay ventas.
+                No sales yet.
               </td>
             </tr>
           )}
@@ -153,5 +153,5 @@ function AdminDashboard() {
 
 export default function Dashboard() {
   const { isAdmin } = useAuth();
-  return isAdmin ? <AdminDashboard /> : <VendedorLanding />;
+  return isAdmin ? <AdminDashboard /> : <SellerLanding />;
 }
