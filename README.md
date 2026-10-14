@@ -4,6 +4,8 @@
 
 StockManager is an internal back-office panel for a small store. Staff create orders from a live product search, stock is decremented atomically the moment an order is placed (and restored if it is cancelled), every stock change is written to an audit trail, and admins get a sales dashboard, CSV/PDF exports and user management.
 
+**Live demo: [stockmanager.reddevs.net](https://stockmanager.reddevs.net)** — sign in with the [demo credentials](#demo-credentials).
+
 ![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-4-000000?logo=express&logoColor=white)
@@ -257,7 +259,7 @@ npm run dev             # http://localhost:5173
 
 ## Demo credentials
 
-The seed data models a small hardware & general store (hand tools, fasteners, paint and cleaning supplies, prices in USD) with a few customers and historical orders so the dashboard has something to show.
+The seed data models a small hardware & general store (hand tools, fasteners, paint and cleaning supplies, prices in USD) with a few customers and historical orders so the dashboard has something to show. The same accounts work on the [live demo](https://stockmanager.reddevs.net) (deployment notes in [`ops/`](ops/README.md)).
 
 | Role   | Email                     | Password    | Can do |
 |--------|---------------------------|-------------|--------|
