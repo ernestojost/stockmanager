@@ -27,7 +27,12 @@ WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
 
 echo "==> Building the frontend"
-(cd frontend && npm ci --no-audit --no-fund && VITE_API_URL=/api npm run build)
+# MSYS_NO_PATHCONV: stop Git Bash from rewriting "/api" into "C:/Program Files/Git/api".
+(cd frontend && npm ci --no-audit --no-fund && MSYS_NO_PATHCONV=1 VITE_API_URL=/api npm run build)
+if ! grep -q 'baseURL:`/api`' frontend/dist/assets/*.js; then
+  echo "Built bundle does not use baseURL /api; aborting." >&2
+  exit 1
+fi
 tar -C frontend/dist -czf "$WORK/web.tgz" .
 
 echo "==> Packing the backend"
